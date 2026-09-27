@@ -1,5 +1,10 @@
 # Live reconciliation findings
 
+These notes record the initial reference-fix investigation. The follow-up
+[config creation change](config-creation.md) now supports creating new branches
+without pre-seeding an external identity. The missing-config API ambiguity below
+still applies to adoption and recovery after external deletion.
+
 Tested against Crossplane 2.4.2 in disposable kind cluster `doppler-test`, with
 Doppler Terraform provider 1.21.5. No test credentials belong in this repository.
 
@@ -44,9 +49,10 @@ it may also mean the token cannot access an existing config. A robust upstream
 fix needs an unambiguous missing-resource response or an authoritative existence
 check with suitable permissions. No such error suppression is included here.
 
-The quick-start example instead adopts the `ci` root config that Doppler creates
-with the environment, using `managementPolicies: [Observe]`. This validates
-Config observation, not branch-config creation.
+The reference-fix test instead adopted the `ci` root config that Doppler creates
+with the environment, using `managementPolicies: [Observe]`. That test validated
+Config observation, not branch-config creation. The follow-up test and current
+quick-start use `forProvider.name` for new branches.
 
 ### Plain Terraform reproduction
 

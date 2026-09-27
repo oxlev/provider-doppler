@@ -15,7 +15,7 @@ for the exact immutable SHA tag.
 | --- | --- | --- |
 | Project | Doppler-assigned project slug | `project` |
 | Environment | Environment slug | `project.environment` |
-| Config | Config name | `project.environment.config` |
+| Config | Confirmed config name (set after creation) | `project.environment.config` |
 | Secret | Secret name (for example `API_KEY`) | `project.config.name` |
 
 Namespaced APIs: `secrets.doppler.m.crossplane.io/v1alpha1` (recommended for
@@ -97,9 +97,9 @@ kubectl -n crossplane-system wait secrets.secrets.doppler.m.crossplane.io/crossp
   --for=condition=Ready --timeout=5m
 ```
 
-The example creates a project, a `ci` environment, and an `API_KEY` secret.
-It observes the `ci` root config automatically created by Doppler. Kubernetes
-object names and Doppler names are deliberately separate. References allow dependency reconciliation without manual ordering.
+The example creates a project, a `ci` environment, a `ci_build` branch config,
+and an `API_KEY` secret. Kubernetes object names and Doppler names are deliberately
+separate. References allow dependency reconciliation without manual ordering.
 If reconciliation fails, inspect resource conditions/events with `kubectl describe`;
 verify token permissions, reference readiness, and Secret names/keys first.
 
@@ -139,17 +139,34 @@ For adoption, set the external-name annotation, populate parent identifiers,
 and start with `managementPolicies: [Observe]`. Confirm identity and observed
 state before enabling Update or Delete. Doppler automatically creates default
 environments/configs: adopt those rather than trying to recreate them. The
-example uses a separate `ci` environment and observes its automatic `ci` root config.
+example uses a separate `ci` environment and creates a `ci_build` branch config.
+
+### Config creation versus adoption
+
+For a **new Config**, set `spec.forProvider.name` (or `initProvider.name`) and
+omit `crossplane.io/external-name`. The Kubernetes object name is not used as the
+Doppler config name. The provider records the external name after successful
+creation. This avoids synthesizing an identity and reading a config that does
+not yet exist.
+
+For an **existing Config**, set `crossplane.io/external-name` to its config name,
+provide its project/environment, and start with `managementPolicies: [Observe]`.
+Existing annotated manifests remain supported without a `forProvider.name`.
+If both are set, they must agree; renaming through this API is not supported.
 
 ### Known live-test limitations
 
-With Terraform provider 1.21.5, reading a nonexistent branch config can return
-HTTP 400 (`This token does not have access to requested config`) rather than
-404. Terraform therefore fails refresh before Crossplane can create the config.
-The provider deliberately does not reinterpret authorization errors as absence.
-Use an existing config (initially with `managementPolicies: [Observe]`) or the
-root config automatically created with an environment. Branch-config creation
-and recovery after its external deletion remain blocked for affected tokens.
+Doppler can return HTTP 400 (`This token does not have access to requested config`)
+for a nonexistent config rather than 404. The creation path above avoids that
+read, but adoption of a missing config and recovery after external deletion still
+fail closed. Authorization errors are never reinterpreted as absence.
+
+Do not simply remove the external-name annotation to retry an existing resource.
+First confirm its identity and whether it exists. If creation succeeded but its
+identity was not persisted (for example, a crash at that boundary), explicitly
+adopt the confirmed config. Retrying a create with a duplicate name returns an
+error rather than silently taking over the existing config. See
+[config-creation notes](docs/config-creation.md) for validation and migration.
 
 Reference resolution waits for parents to be both Ready and Synced before
 extracting their external names. A merge-patch resolver avoids a pinned-runtime

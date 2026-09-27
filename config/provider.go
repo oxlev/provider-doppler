@@ -42,6 +42,10 @@ func provider(scope, group string) *ujconfig.Provider {
 				r.References["project"] = ujconfig.Reference{Type: fmt.Sprintf("%s/apis/%s/secrets/v1alpha1.Project", modulePath, scope), Extractor: modulePath + "/internal/references.ReadyExternalName()"}
 			}
 			if r.Name == "doppler_config" {
+				// Existing annotated configs remain valid without a spec name.
+				// The external-name adapter validates new configs at runtime.
+				r.TerraformResource.Schema["name"].Required = false
+				r.TerraformResource.Schema["name"].Optional = true
 				r.References["environment"] = ujconfig.Reference{Type: fmt.Sprintf("%s/apis/%s/secrets/v1alpha1.Environment", modulePath, scope), Extractor: modulePath + "/internal/references.ReadyExternalName()"}
 			}
 			if r.Name == "doppler_secret" {
