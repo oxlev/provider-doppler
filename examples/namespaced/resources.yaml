@@ -1,0 +1,72 @@
+# Uses the ProviderConfig and credential Secret in ../namespaced/providerconfig.
+# No Delete policy: removing these objects leaves the Doppler resources intact.
+apiVersion: secrets.doppler.m.crossplane.io/v1alpha1
+kind: Project
+metadata:
+  name: crossplane-example
+  namespace: crossplane-system
+spec:
+  managementPolicies: [Observe, Create, Update, LateInitialize]
+  forProvider:
+    name: crossplane-example
+    description: Managed by Crossplane
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default
+---
+apiVersion: secrets.doppler.m.crossplane.io/v1alpha1
+kind: Environment
+metadata:
+  name: crossplane-example-ci
+  namespace: crossplane-system
+  annotations:
+    crossplane.io/external-name: ci
+spec:
+  managementPolicies: [Observe, Create, Update, LateInitialize]
+  forProvider:
+    name: Continuous Integration
+    projectRef:
+      name: crossplane-example
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default
+---
+apiVersion: secrets.doppler.m.crossplane.io/v1alpha1
+kind: Config
+metadata:
+  name: crossplane-example-ci-build
+  namespace: crossplane-system
+  annotations:
+    crossplane.io/external-name: ci_build
+spec:
+  managementPolicies: [Observe, Create, Update, LateInitialize]
+  forProvider:
+    projectRef:
+      name: crossplane-example
+    environmentRef:
+      name: crossplane-example-ci
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default
+---
+# Create a Kubernetes Secret named app-input containing key api-key separately.
+apiVersion: secrets.doppler.m.crossplane.io/v1alpha1
+kind: Secret
+metadata:
+  name: crossplane-example-api-key
+  namespace: crossplane-system
+  annotations:
+    crossplane.io/external-name: API_KEY
+spec:
+  managementPolicies: [Observe, Create, Update, LateInitialize]
+  forProvider:
+    projectRef:
+      name: crossplane-example
+    configRef:
+      name: crossplane-example-ci-build
+    valueSecretRef:
+      name: app-input
+      key: api-key
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

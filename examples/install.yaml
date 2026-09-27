@@ -1,0 +1,7 @@
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-doppler
+spec:
+  # Publish this package before installing; no release has been published yet.
+  package: ghcr.io/oxlev/provider-doppler:v0.1.0

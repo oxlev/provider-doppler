@@ -1,0 +1,2342 @@
+name: dopplerhq/doppler
+resources:
+    doppler_change_request_policy:
+        subCategory: Change Requests
+        description: Manage a Doppler change request policy.
+        name: doppler_change_request_policy
+        title: doppler_change_request_policy Resource - terraform-provider-doppler
+        examples:
+            - name: prd_review
+              manifest: |-
+                {
+                  "description": "A change request policy which requires 2 total approvals, and 1 approval from emily or any member of the prod_reviewers group.\nReviews from the author of the change request are not counted.\nThis policy is enforced in all configs of the prd environment of test_proj, as well as the ci_github branch config.\n",
+                  "name": "Prod Review",
+                  "rules": [
+                    {
+                      "auto_assign_reviewers": "matchCount",
+                      "disallow_self_review": true,
+                      "required_reviewers": [
+                        {
+                          "count": 2
+                        },
+                        {
+                          "count": 1,
+                          "group_slugs": [
+                            "${doppler_group.prod_reviewers.slug}"
+                          ],
+                          "user_slugs": [
+                            "${data.doppler_user.emily.slug}"
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "targets": [
+                    {
+                      "project": [
+                        {
+                          "config_names": [
+                            "${doppler_config.ci_github.name}"
+                          ],
+                          "environment_slugs": [
+                            "${doppler_environment.prd.slug}"
+                          ],
+                          "project_name": "${doppler_project.test_proj.name}"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              references:
+                rules.required_reviewers.group_slugs: doppler_group.prod_reviewers.slug
+                rules.required_reviewers.user_slugs: data.doppler_user.emily.slug
+                targets.project.config_names: doppler_config.ci_github.name
+                targets.project.environment_slugs: doppler_environment.prd.slug
+                targets.project.project_name: doppler_project.test_proj.name
+              dependencies:
+                doppler_config.ci_github: |-
+                    {
+                      "environment": "${doppler_environment.ci.slug}",
+                      "name": "ci_github",
+                      "project": "${doppler_project.test_proj.name}"
+                    }
+                doppler_environment.ci: |-
+                    {
+                      "name": "CI-CD",
+                      "project": "${doppler_project.test_proj.name}",
+                      "slug": "ci"
+                    }
+                doppler_environment.prd: |-
+                    {
+                      "name": "prd",
+                      "project": "${doppler_project.test_proj.name}",
+                      "slug": "prd"
+                    }
+                doppler_group.prod_reviewers: |-
+                    {
+                      "name": "Prod Reviewers"
+                    }
+                doppler_group_member.prod_reviewers: |-
+                    {
+                      "for_each": "${toset([data.doppler_user.nic.slug])}",
+                      "group_slug": "${doppler_group.prod_reviewers.slug}",
+                      "user_slug": "${each.value}"
+                    }
+                doppler_project.test_proj: |-
+                    {
+                      "description": "This is a test project",
+                      "name": "my-test-project"
+                    }
+        argumentDocs:
+            all: (Boolean) Whether or not the policy applies to all configs in the project
+            all_projects: (Boolean) Whether or not the policy applies to all projects in the workplace
+            auto_assign_reviewers: '(String) If set, the strategy used to automatically assign reviewers to CRs targeted by this policy. Valid values: all, matchCount, never (default)'
+            config_names: (Set of String) Specific configs the policy applies to
+            count: (Number) The number of approvals a change request must receive before it can be applied
+            description: (String) A description of the change request policy
+            disallow_self_review: (Boolean) If true, approvals from the author of a change request will be excluded when evaluating this policy
+            environment_slugs: (Set of String) Entire environments the policy applies to
+            group_slugs: (Set of String) If set, only approvals from members of these groups will satisfy this rule
+            id: (String) The ID of this resource.
+            name: (String) The name of the change request policy
+            project: (Block Set) A project that the policy will apply to (see below for nested schema)
+            project_name: (String) The name of the project to apply the policy to
+            required_reviewers: (Block Set) Enforces that a specific number of users approve a change request before it can be applied (see below for nested schema)
+            rules: '(Block List, Min: 1, Max: 1) Rules that the policy will apply to its targets (see below for nested schema)'
+            slug: (String) The unique identifier of the change request policy
+            targets: '(Block List, Min: 1, Max: 1) Where the policy will apply (see below for nested schema)'
+            user_slugs: (Set of String) If set, only approvals from these users will satisfy this rule
+        importStatements:
+            - terraform import doppler_change_request_policy.<name> <change-request-policy-id>
+    doppler_config:
+        subCategory: Project Structure
+        description: Manage a Doppler config.
+        name: doppler_config
+        title: doppler_config Resource - terraform-provider-doppler
+        examples:
+            - name: backend_ci_github
+              manifest: |-
+                {
+                  "environment": "ci",
+                  "name": "ci_github",
+                  "project": "backend"
+                }
+        argumentDocs:
+            descriptor: (String) The descriptor (project.config) of the Doppler config
+            environment: (String) The name of the Doppler environment where the config is located
+            id: (String) The ID of this resource.
+            inheritable: (Boolean) Whether or not the Doppler config can be inherited by other configs
+            inherits: (List of String) A list of other Doppler config descriptors that this config inherits from. Descriptors match the format "project.config" (e.g. backend.stg), which is most easily retrieved as the computed descriptor of a doppler_config resource (e.g. doppler_config.backend_stg.descriptor)
+            name: (String) The name of the Doppler config
+            project: (String) The name of the Doppler project where the config is located
+        importStatements:
+            - terraform import doppler_config.default <project-name>.<environment-slug>.<config-name>
+    doppler_environment:
+        subCategory: Project Structure
+        description: Manage a Doppler environment.
+        name: doppler_environment
+        title: doppler_environment Resource - terraform-provider-doppler
+        examples:
+            - name: backend_ci
+              manifest: |-
+                {
+                  "name": "Continuous Integration",
+                  "project": "backend",
+                  "slug": "ci"
+                }
+        argumentDocs:
+            id: (String) The ID of this resource.
+            name: (String) The name of the Doppler environment
+            personal_configs: (Boolean) Whether or not personal configs are enabled for the environment
+            project: (String) The name of the Doppler project where the environment is located
+            slug: (String) The slug of the Doppler environment
+        importStatements:
+            - terraform import doppler_environment.default <project-name>.<environment-slug>
+    doppler_group:
+        subCategory: Groups
+        description: Manage a Doppler group.
+        name: doppler_group
+        title: doppler_group Resource - terraform-provider-doppler
+        examples:
+            - name: engineering
+              manifest: |-
+                {
+                  "name": "engineering",
+                  "workplace_role": "viewer"
+                }
+        argumentDocs:
+            default_project_role: (String) The default project role assigned to the group when added to a Doppler project. If set to null, the default project role is inherited from the workplace setting.
+            id: (String) The ID of this resource.
+            name: (String) The name of the group
+            slug: (String) The slug of the group
+            workplace_role: (String) The workplace role assigned to members of the group. If omitted, state will be tracked in Terraform but not updated in Doppler. Use "no_access" to ensure the group has no workplace permissions
+        importStatements:
+            - |-
+              # import using the group slug from the URL:
+              # https://dashboard.doppler.com/workplace/[workplace-slug]/team/groups/[group-slug]
+              terraform import doppler_group.default <group-slug>
+    doppler_group_member:
+        subCategory: Groups
+        description: Manage a Doppler user/group membership.
+        name: doppler_group_member
+        title: doppler_group_member Resource - terraform-provider-doppler
+        examples:
+            - name: engineering
+              manifest: |-
+                {
+                  "for_each": "${toset([data.doppler_user.nic.slug, data.doppler_user.andre.slug])}",
+                  "group_slug": "${doppler_group.engineering.slug}",
+                  "user_slug": "${each.value}"
+                }
+              references:
+                group_slug: doppler_group.engineering.slug
+                user_slug: each.value
+              dependencies:
+                doppler_group.engineering: |-
+                    {
+                      "name": "engineering"
+                    }
+        argumentDocs:
+            group_slug: (String) The slug of the Doppler group
+            id: (String) The ID of this resource.
+            user_slug: (String) The slug of the Doppler workplace user
+        importStatements:
+            - |-
+              # import using the group slug from the URL:
+              # https://dashboard.doppler.com/workplace/[workplace-slug]/team/groups/[group-slug]
+              # and the user slug from the URL:
+              # https://dashboard.doppler.com/workplace/[workplace-slug]/team/users/[user-slug]
+              terraform import doppler_group_member.default <group-slug>.workplace_user.<user-slug>
+    doppler_group_members:
+        subCategory: Groups
+        description: Manage a Doppler group's memberships.
+        name: doppler_group_members
+        title: doppler_group_members Resource - terraform-provider-doppler
+        examples:
+            - name: engineering
+              manifest: |-
+                {
+                  "group_slug": "${doppler_group.engineering.slug}",
+                  "user_slugs": [
+                    "${data.doppler_user.nic.slug}",
+                    "${data.doppler_user.andre.slug}"
+                  ]
+                }
+              references:
+                group_slug: doppler_group.engineering.slug
+                user_slugs: data.doppler_user.nic.slug
+              dependencies:
+                doppler_group.engineering: |-
+                    {
+                      "name": "engineering"
+                    }
+        argumentDocs:
+            group_slug: (String) The slug of the group
+            id: (String) The ID of this resource.
+            user_slugs: (Set of String) A list of user slugs in the group
+        importStatements:
+            - |-
+              # import using the group slug from the URL:
+              # https://dashboard.doppler.com/workplace/[workplace-slug]/team/groups/[group-slug]
+              # and the user slugs from the URL:
+              # https://dashboard.doppler.com/workplace/[workplace-slug]/team/users/[user-slug]
+              terraform import doppler_group_members.default <group-slug>
+    doppler_integration_aws_iam_user_keys:
+        subCategory: Integrations
+        description: Manage a AWS IAM User Keys Doppler integration.
+        name: doppler_integration_aws_iam_user_keys
+        title: doppler_integration_aws_iam_user_keys Resource - terraform-provider-doppler
+        examples:
+            - name: i_aws_iam_uk
+              manifest: |-
+                {
+                  "assume_role_arn": "arn:aws:iam::xxxxxxxxxxxx:role/xxxxxxxxxxxxxxxx",
+                  "name": "TF AWS IAM UK"
+                }
+              dependencies:
+                doppler_rotated_secret_aws_iam_user_keys.rs_aws_iam_uk: |-
+                    {
+                      "config": "dev",
+                      "integration": "${doppler_integration_aws_iam_user_keys.i_aws_iam_uk.id}",
+                      "name": "AWS_IAM_UK",
+                      "project": "backend",
+                      "rotation_period_sec": 2592000,
+                      "username": "xxxxxxxxxxxxx"
+                    }
+        argumentDocs:
+            assume_role_arn: (String) IAM Role ARN for role assumption
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_aws_mssql:
+        subCategory: Integrations
+        description: Manage a AWS MS SQL Server Doppler integration.
+        name: doppler_integration_aws_mssql
+        title: doppler_integration_aws_mssql Resource - terraform-provider-doppler
+        examples:
+            - name: i_aws_mssql
+              manifest: |-
+                {
+                  "assume_role_arn": "arn:aws:iam::xxxxxxxxxxxx:role/xxxxxxxxxxxxxxxx",
+                  "lambda_arn": "arn:aws:lambda:xxxxxxxxx:xxxxxxxxxxxx:function:xxxxxxxxxxxxxxxxxxxx",
+                  "name": "TF AWS MS SQL Server"
+                }
+              dependencies:
+                doppler_rotated_secret_aws_mssql.rs_aws_mssql: |-
+                    {
+                      "config": "dev",
+                      "credentials": [
+                        {
+                          "password": "${var.db_password_1}",
+                          "username": "xxxxxxxxxxx"
+                        },
+                        {
+                          "password": "${var.db_password_2}",
+                          "username": "xxxxxxxxxxx"
+                        }
+                      ],
+                      "host": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                      "integration": "${doppler_integration_aws_mssql.i_aws_mssql.id}",
+                      "lifecycle": [
+                        {
+                          "ignore_changes": [
+                            "${credentials}"
+                          ]
+                        }
+                      ],
+                      "name": "DB",
+                      "port": 1433,
+                      "project": "backend",
+                      "rotation_period_sec": 2592000
+                    }
+        argumentDocs:
+            assume_role_arn: (String) IAM Role ARN for role assumption
+            id: (String) The ID of this resource.
+            lambda_arn: (String) The Lambda ARN
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_aws_mysql:
+        subCategory: Integrations
+        description: Manage a AWS MySQL Doppler integration.
+        name: doppler_integration_aws_mysql
+        title: doppler_integration_aws_mysql Resource - terraform-provider-doppler
+        examples:
+            - name: i_aws_mysql
+              manifest: |-
+                {
+                  "assume_role_arn": "arn:aws:iam::xxxxxxxxxxxx:role/xxxxxxxxxxxxxxxx",
+                  "lambda_arn": "arn:aws:lambda:xxxxxxxxx:xxxxxxxxxxxx:function:xxxxxxxxxxxxxxxxxxxx",
+                  "name": "TF AWS MySQL"
+                }
+              dependencies:
+                doppler_rotated_secret_aws_mysql.rs_aws_mysql: |-
+                    {
+                      "config": "dev",
+                      "credentials": [
+                        {
+                          "password": "${var.db_password_1}",
+                          "username": "xxxxxxxxxxx"
+                        },
+                        {
+                          "password": "${var.db_password_2}",
+                          "username": "xxxxxxxxxxx"
+                        }
+                      ],
+                      "host": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                      "integration": "${doppler_integration_aws_mysql.i_aws_mysql.id}",
+                      "lifecycle": [
+                        {
+                          "ignore_changes": [
+                            "${credentials}"
+                          ]
+                        }
+                      ],
+                      "managing_user_password": "xxxxxxxxxxxxxxxxxxxx",
+                      "managing_user_username": "xxxxxxxx",
+                      "name": "DB",
+                      "port": 3306,
+                      "project": "backend",
+                      "rotation_period_sec": 2592000
+                    }
+        argumentDocs:
+            assume_role_arn: (String) IAM Role ARN for role assumption
+            id: (String) The ID of this resource.
+            lambda_arn: (String) The Lambda ARN
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_aws_parameter_store:
+        subCategory: Integrations
+        description: Manage an AWS Parameter Store Doppler integration.
+        name: doppler_integration_aws_parameter_store
+        title: doppler_integration_aws_parameter_store Resource - terraform-provider-doppler
+        examples:
+            - name: prod
+              manifest: |-
+                {
+                  "assume_role_arn": "${aws_iam_role.doppler_parameter_store.arn}",
+                  "name": "Production"
+                }
+              references:
+                assume_role_arn: aws_iam_role.doppler_parameter_store.arn
+              dependencies:
+                aws_iam_role.doppler_parameter_store: |-
+                    {
+                      "assume_role_policy": "${jsonencode({\n    Version = \"2012-10-17\"\n    Statement = [\n      {\n        Effect = \"Allow\"\n        Action = \"sts:AssumeRole\"\n        Principal = {\n          AWS = \"arn:aws:iam::299900769157:user/doppler-integration-operator\"\n        },\n        Condition = {\n          StringEquals = {\n            \"sts:ExternalId\" = \"\u003cYOUR_WORKPLACE_SLUG\u003e\"\n          }\n        }\n      },\n    ]\n  })}",
+                      "inline_policy": [
+                        {
+                          "name": "doppler_secret_manager",
+                          "policy": "${jsonencode({\n      Version = \"2012-10-17\"\n      Statement = [\n        {\n          Action = [\n\n            \"ssm:PutParameter\",\n            \"ssm:LabelParameterVersion\",\n            \"ssm:DeleteParameter\",\n            \"ssm:RemoveTagsFromResource\",\n            \"ssm:GetParameterHistory\",\n            \"ssm:AddTagsToResource\",\n            \"ssm:GetParametersByPath\",\n            \"ssm:GetParameters\",\n            \"ssm:GetParameter\",\n            \"ssm:DeleteParameters\"\n          ]\n          Effect   = \"Allow\"\n          Resource = \"*\"\n          # Limit Doppler to only access certain names\n        },\n      ]\n    })}"
+                        }
+                      ],
+                      "name": "doppler_parameter_store"
+                    }
+                doppler_secrets_sync_aws_parameter_store.backend_prod: |-
+                    {
+                      "config": "prd",
+                      "delete_behavior": "leave_in_target",
+                      "integration": "${doppler_integration_aws_parameter_store.prod.id}",
+                      "path": "/backend/",
+                      "project": "backend",
+                      "region": "us-east-1",
+                      "secure_string": true,
+                      "tags": {
+                        "myTag": "enabled"
+                      }
+                    }
+        argumentDocs:
+            assume_role_arn: (String) The ARN of the AWS role for Doppler to assume
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_aws_postgres:
+        subCategory: Integrations
+        description: Manage a AWS Postgres Doppler integration.
+        name: doppler_integration_aws_postgres
+        title: doppler_integration_aws_postgres Resource - terraform-provider-doppler
+        examples:
+            - name: i_aws_postgres
+              manifest: |-
+                {
+                  "assume_role_arn": "arn:aws:iam::xxxxxxxxxxxx:role/xxxxxxxxxxxxxxxx",
+                  "lambda_arn": "arn:aws:lambda:xxxxxxxxx:xxxxxxxxxxxx:function:xxxxxxxxxxxxxxxxxxxx",
+                  "name": "TF AWS Postgres"
+                }
+              dependencies:
+                doppler_rotated_secret_aws_postgres.rs_aws_postgres: |-
+                    {
+                      "config": "dev",
+                      "credentials": [
+                        {
+                          "password": "${var.db_password_1}",
+                          "username": "xxxxxxxxxxx"
+                        },
+                        {
+                          "password": "${var.db_password_2}",
+                          "username": "xxxxxxxxxxx"
+                        }
+                      ],
+                      "database": "xxxxxxxx",
+                      "host": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                      "integration": "${doppler_integration_aws_postgres.i_aws_postgres.id}",
+                      "lifecycle": [
+                        {
+                          "ignore_changes": [
+                            "${credentials}"
+                          ]
+                        }
+                      ],
+                      "managing_user_password": "xxxxxxxxxxxxxxxxxxxx",
+                      "managing_user_username": "xxxxxxxx",
+                      "name": "DB",
+                      "port": 5432,
+                      "project": "backend",
+                      "rotation_period_sec": 2592000
+                    }
+        argumentDocs:
+            assume_role_arn: (String) IAM Role ARN for role assumption
+            id: (String) The ID of this resource.
+            lambda_arn: (String) The Lambda ARN
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_aws_secrets_manager:
+        subCategory: Integrations
+        description: Manage an AWS Secrets Manager Doppler integration.
+        name: doppler_integration_aws_secrets_manager
+        title: doppler_integration_aws_secrets_manager Resource - terraform-provider-doppler
+        examples:
+            - name: prod
+              manifest: |-
+                {
+                  "assume_role_arn": "${aws_iam_role.doppler_secrets_manager.arn}",
+                  "name": "Production"
+                }
+              references:
+                assume_role_arn: aws_iam_role.doppler_secrets_manager.arn
+              dependencies:
+                aws_iam_role.doppler_secrets_manager: |-
+                    {
+                      "assume_role_policy": "${jsonencode({\n    Version = \"2012-10-17\"\n    Statement = [\n      {\n        Effect = \"Allow\"\n        Action = \"sts:AssumeRole\"\n        Principal = {\n          AWS = \"arn:aws:iam::299900769157:user/doppler-integration-operator\"\n        },\n        Condition = {\n          StringEquals = {\n            \"sts:ExternalId\" = \"\u003cYOUR_WORKPLACE_SLUG\u003e\"\n          }\n        }\n      },\n    ]\n  })}",
+                      "inline_policy": [
+                        {
+                          "name": "doppler_secret_manager",
+                          "policy": "${jsonencode({\n      Version = \"2012-10-17\"\n      Statement = [\n        {\n          Action = [\n\n            \"secretsmanager:GetSecretValue\",\n            \"secretsmanager:DescribeSecret\",\n            \"secretsmanager:PutSecretValue\",\n            \"secretsmanager:CreateSecret\",\n            \"secretsmanager:DeleteSecret\",\n            \"secretsmanager:TagResource\",\n            \"secretsmanager:UpdateSecret\"\n          ]\n          Effect   = \"Allow\"\n          Resource = \"*\"\n          # Limit Doppler to only access certain secret names\n        },\n      ]\n    })}"
+                        }
+                      ],
+                      "name": "doppler_secrets_manager"
+                    }
+                doppler_secrets_sync_aws_secrets_manager.backend_prod: |-
+                    {
+                      "config": "prd",
+                      "delete_behavior": "leave_in_target",
+                      "integration": "${doppler_integration_aws_secrets_manager.prod.id}",
+                      "path": "/backend/",
+                      "project": "backend",
+                      "region": "us-east-1",
+                      "tags": {
+                        "myTag": "enabled"
+                      }
+                    }
+        argumentDocs:
+            assume_role_arn: (String) The ARN of the AWS role for Doppler to assume
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_azure_dynamic_service_principal:
+        subCategory: Integrations
+        description: Manage an Azure Dynamic Service Principal Doppler integration.
+        name: doppler_integration_azure_dynamic_service_principal
+        title: doppler_integration_azure_dynamic_service_principal Resource - terraform-provider-doppler
+        examples:
+            - name: prod
+              manifest: |-
+                {
+                  "client_id": "77ed9112-b7f5-4d1d-a60f-198375e7f265",
+                  "client_secret": "kXOQb4juoe~jEqQVQdeXEFhsgIvkmoE0Qz3jBwPo",
+                  "name": "Production",
+                  "tenant_id": "c77d1b3d-6350-4696-b59f-90dae3e0b41e"
+                }
+        argumentDocs:
+            client_id: (String) The application (client) ID of the managing service principal
+            client_secret: (String, Sensitive) The client secret of the managing service principal
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+            tenant_id: (String) The Azure directory (tenant) ID
+        importStatements: []
+    doppler_integration_azure_dynamic_service_principal_oidc:
+        subCategory: Integrations
+        description: Manage an Azure Dynamic Service Principal Doppler integration using workload identity federation.
+        name: doppler_integration_azure_dynamic_service_principal_oidc
+        title: doppler_integration_azure_dynamic_service_principal_oidc Resource - terraform-provider-doppler
+        examples:
+            - name: prod
+              manifest: |-
+                {
+                  "client_id": "${data.azuread_application.doppler_manager.client_id}",
+                  "name": "Production",
+                  "tenant_id": "c77d1b3d-6350-4696-b59f-90dae3e0b41e"
+                }
+              references:
+                client_id: data.azuread_application.doppler_manager.client_id
+              dependencies:
+                azuread_application_federated_identity_credential.doppler: |-
+                    {
+                      "application_id": "${data.azuread_application.doppler_manager.id}",
+                      "audiences": [
+                        "${doppler_integration_azure_dynamic_service_principal_oidc.prod.federation_audience}"
+                      ],
+                      "display_name": "doppler-production",
+                      "issuer": "${doppler_integration_azure_dynamic_service_principal_oidc.prod.federation_issuer}",
+                      "subject": "${doppler_integration_azure_dynamic_service_principal_oidc.prod.federation_subject}"
+                    }
+        argumentDocs:
+            client_id: (String) The application (client) ID of the managing service principal
+            federation_audience: (String) The audience to configure on the federated identity credential
+            federation_issuer: (String) The issuer of the OIDC tokens Doppler issues for this integration
+            federation_subject: (String) The subject of the OIDC tokens Doppler issues for this integration
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+            tenant_id: (String) The Azure directory (tenant) ID
+        importStatements: []
+    doppler_integration_azure_rotated_service_principal:
+        subCategory: Integrations
+        description: Manage an Azure Rotated Service Principal Doppler integration.
+        name: doppler_integration_azure_rotated_service_principal
+        title: doppler_integration_azure_rotated_service_principal Resource - terraform-provider-doppler
+        examples:
+            - name: prod
+              manifest: |-
+                {
+                  "client_id": "77ed9112-b7f5-4d1d-a60f-198375e7f265",
+                  "client_secret": "kXOQb4juoe~jEqQVQdeXEFhsgIvkmoE0Qz3jBwPo",
+                  "name": "Production",
+                  "tenant_id": "c77d1b3d-6350-4696-b59f-90dae3e0b41e"
+                }
+        argumentDocs:
+            client_id: (String) The application (client) ID of the managing service principal
+            client_secret: (String, Sensitive) The client secret of the managing service principal
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+            tenant_id: (String) The Azure directory (tenant) ID
+        importStatements: []
+    doppler_integration_azure_rotated_service_principal_oidc:
+        subCategory: Integrations
+        description: Manage an Azure Rotated Service Principal Doppler integration using workload identity federation.
+        name: doppler_integration_azure_rotated_service_principal_oidc
+        title: doppler_integration_azure_rotated_service_principal_oidc Resource - terraform-provider-doppler
+        examples:
+            - name: prod
+              manifest: |-
+                {
+                  "client_id": "${data.azuread_application.doppler_manager.client_id}",
+                  "name": "Production",
+                  "tenant_id": "c77d1b3d-6350-4696-b59f-90dae3e0b41e"
+                }
+              references:
+                client_id: data.azuread_application.doppler_manager.client_id
+              dependencies:
+                azuread_application_federated_identity_credential.doppler: |-
+                    {
+                      "application_id": "${data.azuread_application.doppler_manager.id}",
+                      "audiences": [
+                        "${doppler_integration_azure_rotated_service_principal_oidc.prod.federation_audience}"
+                      ],
+                      "display_name": "doppler-production",
+                      "issuer": "${doppler_integration_azure_rotated_service_principal_oidc.prod.federation_issuer}",
+                      "subject": "${doppler_integration_azure_rotated_service_principal_oidc.prod.federation_subject}"
+                    }
+        argumentDocs:
+            client_id: (String) The application (client) ID of the managing service principal
+            federation_audience: (String) The audience to configure on the federated identity credential
+            federation_issuer: (String) The issuer of the OIDC tokens Doppler issues for this integration
+            federation_subject: (String) The subject of the OIDC tokens Doppler issues for this integration
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+            tenant_id: (String) The Azure directory (tenant) ID
+        importStatements: []
+    doppler_integration_azure_vault_service_principal:
+        subCategory: Integrations
+        description: Manage an Azure Vault (Service Principal) Doppler integration.
+        name: doppler_integration_azure_vault_service_principal
+        title: doppler_integration_azure_vault_service_principal Resource - terraform-provider-doppler
+        examples:
+            - name: prod
+              manifest: |-
+                {
+                  "client_id": "77ed9112-b7f5-4d1d-a60f-198375e7f265",
+                  "client_secret": "kXOQb4juoe~jEqQVQdeXEFhsgIvkmoE0Qz3jBwPo",
+                  "name": "prod",
+                  "tenant_id": "c77d1b3d-6350-4696-b59f-90dae3e0b41e"
+                }
+        argumentDocs:
+            client_id: (String) The Service Principal Client ID. See https://docs.doppler.com/docs/azure-key-vault#custom-service-principal for details.
+            client_secret: (String, Sensitive) The Service Principal Client Secret. See https://docs.doppler.com/docs/azure-key-vault#custom-service-principal for details.
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+            tenant_id: (String) The Service Principal Tenant ID. See https://docs.doppler.com/docs/azure-key-vault#custom-service-principal for details.
+        importStatements: []
+    doppler_integration_circleci:
+        subCategory: Integrations
+        description: Manage a CircleCI Doppler integration.
+        name: doppler_integration_circleci
+        title: doppler_integration_circleci Resource - terraform-provider-doppler
+        examples:
+            - name: prod
+              manifest: |-
+                {
+                  "api_token": "my_api_token",
+                  "name": "Production"
+                }
+              dependencies:
+                doppler_secrets_sync_circleci.backend_prod: |-
+                    {
+                      "config": "prd",
+                      "delete_behavior": "leave_in_target",
+                      "integration": "${doppler_integration_circleci.prod.id}",
+                      "organization_slug": "myorg",
+                      "project": "backend",
+                      "resource_id": "github/myorg/myproject",
+                      "resource_type": "project"
+                    }
+        argumentDocs:
+            api_token: (String, Sensitive) A CircleCI API token. See https://docs.doppler.com/docs/circleci for details.
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_cloudflare_tokens:
+        subCategory: Integrations
+        description: Manage a Cloudflare Tokens Doppler integration.
+        name: doppler_integration_cloudflare_tokens
+        title: doppler_integration_cloudflare_tokens Resource - terraform-provider-doppler
+        examples:
+            - name: i_cf
+              manifest: |-
+                {
+                  "api_token": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+                  "name": "TF Cloudflare"
+                }
+              dependencies:
+                doppler_rotated_secret_cloudflare_tokens.rs_cf: |-
+                    {
+                      "config": "dev",
+                      "credentials": [
+                        {
+                          "value": "${var.key_1}"
+                        },
+                        {
+                          "value": "${var.key_2}"
+                        }
+                      ],
+                      "integration": "${doppler_integration_cloudflare_tokens.i_cf.id}",
+                      "lifecycle": [
+                        {
+                          "ignore_changes": [
+                            "${credentials}"
+                          ]
+                        }
+                      ],
+                      "name": "CLOUDFLARE",
+                      "project": "backend",
+                      "rotation_period_sec": 2592000
+                    }
+        argumentDocs:
+            api_token: (String, Sensitive) The API Token
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_external_id Resource - terraform-provider-doppler:
+        subCategory: ""
+        name: doppler_integration_external_id Resource - terraform-provider-doppler
+        title: doppler_integration_external_id Resource - terraform-provider-doppler
+        argumentDocs:
+            id: (String) The ID of this resource.
+            integration_type: (String) The integration type for the external id
+        importStatements: []
+    doppler_integration_flyio:
+        subCategory: Integrations
+        description: Manage a Fly.io Doppler integration.
+        name: doppler_integration_flyio
+        title: doppler_integration_flyio Resource - terraform-provider-doppler
+        examples:
+            - name: prod
+              manifest: |-
+                {
+                  "api_key": "fo1_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                  "name": "TF Fly.io"
+                }
+              dependencies:
+                doppler_secrets_sync_flyio.backend_prod: |-
+                    {
+                      "app_id": "my-app",
+                      "config": "prd",
+                      "delete_behavior": "leave_in_target",
+                      "integration": "${doppler_integration_flyio.prod.id}",
+                      "project": "backend",
+                      "restart_machines": true
+                    }
+        argumentDocs:
+            api_key: (String, Sensitive) A Fly.io API key.
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_gcp_cloudsql_mysql:
+        subCategory: Integrations
+        description: Manage a GCP CloudSQL MySQL Doppler integration.
+        name: doppler_integration_gcp_cloudsql_mysql
+        title: doppler_integration_gcp_cloudsql_mysql Resource - terraform-provider-doppler
+        examples:
+            - name: i_gcp_mysql
+              manifest: |-
+                {
+                  "gcp_key": "${var.gcp_key}",
+                  "name": "TF GCP MySQL"
+                }
+              references:
+                gcp_key: var.gcp_key
+              dependencies:
+                doppler_rotated_secret_gcp_cloudsql.rs_gcp_mysql: |-
+                    {
+                      "config": "dev",
+                      "credentials": [
+                        {
+                          "password": "${var.db_password_1}",
+                          "user_host_name": "%",
+                          "username": "xxxxxxxxxxxx"
+                        },
+                        {
+                          "password": "${var.db_password_2}",
+                          "user_host_name": "%",
+                          "username": "xxxxxxxxxxxx"
+                        }
+                      ],
+                      "database_instance": "xxxxxxxxxxxx",
+                      "integration": "${doppler_integration_gcp_cloudsql_mysql.i_gcp_mysql.id}",
+                      "lifecycle": [
+                        {
+                          "ignore_changes": [
+                            "${credentials}"
+                          ]
+                        }
+                      ],
+                      "name": "DB",
+                      "project": "backend",
+                      "rotation_period_sec": 2592000
+                    }
+        argumentDocs:
+            gcp_key: (String, Sensitive) The GCP service account key
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_gcp_cloudsql_mysql_oidc:
+        subCategory: Integrations
+        description: Manage a GCP CloudSQL MySQL Doppler integration using workload identity federation.
+        name: doppler_integration_gcp_cloudsql_mysql_oidc
+        title: doppler_integration_gcp_cloudsql_mysql_oidc Resource - terraform-provider-doppler
+        examples:
+            - name: prod
+              manifest: |-
+                {
+                  "gcp_project_id": "your-gcp-project-id",
+                  "gcp_workload_identity_provider": "//iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/doppler-pool/providers/doppler",
+                  "name": "Production"
+                }
+              dependencies:
+                google_project_iam_member.doppler: |-
+                    {
+                      "member": "${doppler_integration_gcp_cloudsql_mysql_oidc.prod.federation_principal}",
+                      "project": "your-gcp-project-id",
+                      "role": "roles/cloudsql.admin"
+                    }
+        argumentDocs:
+            federation_principal: (String) The IAM principal identifier to grant roles to in GCP for this integration
+            gcp_project_id: (String) The ID of the GCP project the integration operates on
+            gcp_workload_identity_provider: (String) The full resource name of the workload identity pool provider Doppler federates with, e.g. //iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider. Note that it uses the numeric project number, not the project ID.
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_gcp_cloudsql_postgres Resource - terraform-provider-doppler:
+        subCategory: Integrations
+        description: Manage a GCP CloudSQL Postgres Doppler integration.
+        name: doppler_integration_gcp_cloudsql_postgres Resource - terraform-provider-doppler
+        title: doppler_integration_gcp_cloudsql_postgres Resource - terraform-provider-doppler
+        argumentDocs:
+            gcp_key: (String, Sensitive) The GCP service account key
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_gcp_cloudsql_postgres_oidc:
+        subCategory: Integrations
+        description: Manage a GCP CloudSQL Postgres Doppler integration using workload identity federation.
+        name: doppler_integration_gcp_cloudsql_postgres_oidc
+        title: doppler_integration_gcp_cloudsql_postgres_oidc Resource - terraform-provider-doppler
+        examples:
+            - name: prod
+              manifest: |-
+                {
+                  "gcp_project_id": "your-gcp-project-id",
+                  "gcp_workload_identity_provider": "//iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/doppler-pool/providers/doppler",
+                  "name": "Production"
+                }
+              dependencies:
+                google_project_iam_member.doppler: |-
+                    {
+                      "member": "${doppler_integration_gcp_cloudsql_postgres_oidc.prod.federation_principal}",
+                      "project": "your-gcp-project-id",
+                      "role": "roles/cloudsql.admin"
+                    }
+        argumentDocs:
+            federation_principal: (String) The IAM principal identifier to grant roles to in GCP for this integration
+            gcp_project_id: (String) The ID of the GCP project the integration operates on
+            gcp_workload_identity_provider: (String) The full resource name of the workload identity pool provider Doppler federates with, e.g. //iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider. Note that it uses the numeric project number, not the project ID.
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_gcp_cloudsql_sqlserver Resource - terraform-provider-doppler:
+        subCategory: Integrations
+        description: Manage a GCP CloudSQL SQL Server Doppler integration.
+        name: doppler_integration_gcp_cloudsql_sqlserver Resource - terraform-provider-doppler
+        title: doppler_integration_gcp_cloudsql_sqlserver Resource - terraform-provider-doppler
+        argumentDocs:
+            gcp_key: (String, Sensitive) The GCP service account key
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_gcp_cloudsql_sqlserver_oidc:
+        subCategory: Integrations
+        description: Manage a GCP CloudSQL SQL Server Doppler integration using workload identity federation.
+        name: doppler_integration_gcp_cloudsql_sqlserver_oidc
+        title: doppler_integration_gcp_cloudsql_sqlserver_oidc Resource - terraform-provider-doppler
+        examples:
+            - name: prod
+              manifest: |-
+                {
+                  "gcp_project_id": "your-gcp-project-id",
+                  "gcp_workload_identity_provider": "//iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/doppler-pool/providers/doppler",
+                  "name": "Production"
+                }
+              dependencies:
+                google_project_iam_member.doppler: |-
+                    {
+                      "member": "${doppler_integration_gcp_cloudsql_sqlserver_oidc.prod.federation_principal}",
+                      "project": "your-gcp-project-id",
+                      "role": "roles/cloudsql.admin"
+                    }
+        argumentDocs:
+            federation_principal: (String) The IAM principal identifier to grant roles to in GCP for this integration
+            gcp_project_id: (String) The ID of the GCP project the integration operates on
+            gcp_workload_identity_provider: (String) The full resource name of the workload identity pool provider Doppler federates with, e.g. //iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider. Note that it uses the numeric project number, not the project ID.
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_gcp_secret_manager:
+        subCategory: Integrations
+        description: Manage a GCP Secret Manager Doppler integration.
+        name: doppler_integration_gcp_secret_manager
+        title: doppler_integration_gcp_secret_manager Resource - terraform-provider-doppler
+        examples:
+            - name: prod
+              manifest: |-
+                {
+                  "gcp_key": "${var.gcp_key}",
+                  "gcp_secret_prefix": "doppler-",
+                  "name": "prod"
+                }
+              references:
+                gcp_key: var.gcp_key
+        argumentDocs:
+            gcp_key: (String, Sensitive) The IAM Service Account JSON key. See https://docs.doppler.com/docs/gcp-secret-manager for details.
+            gcp_secret_prefix: (String) The prefix added to any secret created by this integration in GCP. See https://docs.doppler.com/docs/gcp-secret-manager for details.
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_gcp_secret_manager_oidc:
+        subCategory: Integrations
+        description: Manage a GCP Secret Manager Doppler integration using workload identity federation.
+        name: doppler_integration_gcp_secret_manager_oidc
+        title: doppler_integration_gcp_secret_manager_oidc Resource - terraform-provider-doppler
+        examples:
+            - name: prod
+              manifest: |-
+                {
+                  "gcp_project_id": "your-gcp-project-id",
+                  "gcp_secret_prefix": "doppler-",
+                  "gcp_workload_identity_provider": "//iam.googleapis.com/${google_iam_workload_identity_pool_provider.doppler.name}",
+                  "name": "Production"
+                }
+              dependencies:
+                google_iam_workload_identity_pool.doppler: |-
+                    {
+                      "workload_identity_pool_id": "doppler-pool"
+                    }
+                google_iam_workload_identity_pool_provider.doppler: |-
+                    {
+                      "attribute_condition": "assertion.workplace == '\u003cYOUR_WORKPLACE_SLUG\u003e'",
+                      "attribute_mapping": {
+                        "google.subject": "assertion.sub"
+                      },
+                      "oidc": [
+                        {
+                          "issuer_uri": "https://api.doppler.com"
+                        }
+                      ],
+                      "workload_identity_pool_id": "${google_iam_workload_identity_pool.doppler.workload_identity_pool_id}",
+                      "workload_identity_pool_provider_id": "doppler"
+                    }
+                google_project_iam_member.doppler: |-
+                    {
+                      "condition": [
+                        {
+                          "expression": "resource.name.startsWith(\"projects/\u003cYOUR_PROJECT_NUMBER\u003e/secrets/doppler-\")",
+                          "title": "doppler-prefix-only"
+                        }
+                      ],
+                      "member": "${doppler_integration_gcp_secret_manager_oidc.prod.federation_principal}",
+                      "project": "your-gcp-project-id",
+                      "role": "roles/secretmanager.admin"
+                    }
+        argumentDocs:
+            federation_principal: (String) The IAM principal identifier to grant roles to in GCP for this integration
+            gcp_project_id: (String) The ID of the GCP project the integration operates on
+            gcp_secret_prefix: (String) The prefix added to any secret created by this integration in GCP. Cannot be changed after the integration is created.
+            gcp_workload_identity_provider: (String) The full resource name of the workload identity pool provider Doppler federates with, e.g. //iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider. Note that it uses the numeric project number, not the project ID.
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_gcp_service_account_keys:
+        subCategory: Integrations
+        description: Manage a GCP Service Account Keys Doppler integration.
+        name: doppler_integration_gcp_service_account_keys
+        title: doppler_integration_gcp_service_account_keys Resource - terraform-provider-doppler
+        examples:
+            - name: i_gcp_sak
+              manifest: |-
+                {
+                  "external_id": "${doppler_integration_external_id.i_gcp_sak_extid.id}",
+                  "impersonated_service_account": "${google_service_account.gcpsa_doppler_impersonate.email}",
+                  "name": "TF GCP Service Account Keys"
+                }
+              references:
+                external_id: doppler_integration_external_id.i_gcp_sak_extid.id
+                impersonated_service_account: google_service_account.gcpsa_doppler_impersonate.email
+              dependencies:
+                doppler_integration_external_id.i_gcp_sak_extid: |-
+                    {
+                      "integration_type": "gcp_service_account_keys"
+                    }
+                doppler_rotated_secret_gcp_service_account_keys.rs_gcpsak: |-
+                    {
+                      "config": "dev",
+                      "integration": "${doppler_integration_gcp_service_account_keys.i_gcp_sak.id}",
+                      "name": "GCP_SERVICE_ACCOUNT",
+                      "project": "backend",
+                      "rotation_period_sec": 2592000,
+                      "service_account": "${google_service_account.gcpsa_rotated.email}"
+                    }
+                google_service_account.gcpsa_doppler_impersonate: |-
+                    {
+                      "account_id": "xxxxxxxxxxx",
+                      "description": "${format(\"doppler_impersonate:%s\", doppler_integration_external_id.i_gcp_sak_extid.id)}",
+                      "display_name": "xxxxxxxxxx"
+                    }
+                google_service_account.gcpsa_rotated: |-
+                    {
+                      "account_id": "xxxxxxxxxxxxxxxxxx",
+                      "display_name": "xxxxxxxxxxxxxxxxxx"
+                    }
+                google_service_account_iam_policy.gcp_policy_impersonate: |-
+                    {
+                      "policy_data": "${data.google_iam_policy.doppler_rotation_impersonate_policy.policy_data}",
+                      "service_account_id": "${google_service_account.gcpsa_doppler_impersonate.name}"
+                    }
+                google_service_account_iam_policy.gcp_policy_rotated: |-
+                    {
+                      "policy_data": "${data.google_iam_policy.doppler_rotated_user_policy.policy_data}",
+                      "service_account_id": "${google_service_account.gcpsa_rotated.name}"
+                    }
+        argumentDocs:
+            external_id: (String) The Doppler-generated external id (placed in the service account description field)
+            id: (String) The ID of this resource.
+            impersonated_service_account: (String) The service account email of the account to be impersonated
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_member_group:
+        subCategory: Integrations
+        description: Manage a Doppler integration group member.
+        name: doppler_integration_member_group
+        title: doppler_integration_member_group Resource - terraform-provider-doppler
+        examples:
+            - name: aws_engineering
+              manifest: |-
+                {
+                  "group_slug": "${doppler_group.engineering.slug}",
+                  "integration": "${doppler_integration_aws_secrets_manager.prod.slug}",
+                  "role": "consumer"
+                }
+              references:
+                group_slug: doppler_group.engineering.slug
+                integration: doppler_integration_aws_secrets_manager.prod.slug
+        argumentDocs:
+            group_slug: (String) The slug of the Doppler group
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the Doppler integration where the access is applied
+            role: (String) The integration role identifier for the access. Must use either one of the built-in integration role slugs (admin, consumer, viewer, or no_access), or the slug for a custom integration role.
+        importStatements: []
+    doppler_integration_member_service_account:
+        subCategory: Integrations
+        description: Manage a Doppler integration service account member.
+        name: doppler_integration_member_service_account
+        title: doppler_integration_member_service_account Resource - terraform-provider-doppler
+        examples:
+            - name: aws_ci
+              manifest: |-
+                {
+                  "integration": "${doppler_integration_aws_secrets_manager.prod.slug}",
+                  "role": "consumer",
+                  "service_account_slug": "${doppler_service_account.ci.slug}"
+                }
+              references:
+                integration: doppler_integration_aws_secrets_manager.prod.slug
+                service_account_slug: doppler_service_account.ci.slug
+        argumentDocs:
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the Doppler integration where the access is applied
+            role: (String) The integration role identifier for the access. Must use either one of the built-in integration role slugs (admin, consumer, viewer, or no_access), or the slug for a custom integration role.
+            service_account_slug: (String) The slug of the Doppler service account
+        importStatements: []
+    doppler_integration_member_user:
+        subCategory: Integrations
+        description: Manage a Doppler integration user member.
+        name: doppler_integration_member_user
+        title: doppler_integration_member_user Resource - terraform-provider-doppler
+        examples:
+            - name: aws_brian
+              manifest: |-
+                {
+                  "integration": "${doppler_integration_aws_secrets_manager.prod.slug}",
+                  "role": "consumer",
+                  "user_slug": "${data.doppler_user.brian.slug}"
+                }
+              references:
+                integration: doppler_integration_aws_secrets_manager.prod.slug
+                user_slug: data.doppler_user.brian.slug
+        argumentDocs:
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the Doppler integration where the access is applied
+            role: (String) The integration role identifier for the access. Must use either one of the built-in integration role slugs (admin, consumer, viewer, or no_access), or the slug for a custom integration role.
+            user_slug: (String) The slug of the Doppler workplace user
+        importStatements: []
+    doppler_integration_mongodb_atlas:
+        subCategory: Integrations
+        description: Manage a MongoDB Atlas Doppler integration.
+        name: doppler_integration_mongodb_atlas
+        title: doppler_integration_mongodb_atlas Resource - terraform-provider-doppler
+        examples:
+            - name: i_mongodb_atlas
+              manifest: |-
+                {
+                  "name": "TF MongoDB Atlas",
+                  "private_key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                  "public_key": "xxxxxxxx"
+                }
+              dependencies:
+                doppler_rotated_secret_mongodb_atlas.rs_mongodb_atlas: |-
+                    {
+                      "config": "dev",
+                      "credentials": [
+                        {
+                          "password": "${var.db_password_1}",
+                          "username": "xxxxxxxxx"
+                        },
+                        {
+                          "password": "${var.db_password_2}",
+                          "username": "xxxxxxxxx"
+                        }
+                      ],
+                      "integration": "${doppler_integration_mongodb_atlas.i_mongodb_atlas.id}",
+                      "lifecycle": [
+                        {
+                          "ignore_changes": [
+                            "${credentials}"
+                          ]
+                        }
+                      ],
+                      "name": "MONGODB",
+                      "project": "backend",
+                      "project_id": "xxxxxxxxxxxxxxxxx",
+                      "rotation_period_sec": 2592000
+                    }
+        argumentDocs:
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+            private_key: (String, Sensitive) The Private Key
+            public_key: (String) The Public Key
+        importStatements: []
+    doppler_integration_openai:
+        subCategory: Integrations
+        description: Manage an OpenAI Doppler integration.
+        name: doppler_integration_openai
+        title: doppler_integration_openai Resource - terraform-provider-doppler
+        examples:
+            - name: i_openai
+              manifest: |-
+                {
+                  "admin_key": "sk-admin-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                  "name": "TF OpenAI"
+                }
+              dependencies:
+                doppler_rotated_secret_openai.rs_openai: |-
+                    {
+                      "config": "dev",
+                      "integration": "${doppler_integration_openai.i_openai.id}",
+                      "name": "OPENAI",
+                      "project": "backend",
+                      "project_id": "proj_xxxxxxxxxxxxxxxxxxxxxxxx",
+                      "rotation_period_sec": 2592000
+                    }
+        argumentDocs:
+            admin_key: (String, Sensitive) The OpenAI admin key
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_sendgrid:
+        subCategory: Integrations
+        description: Manage a SendGrid Doppler integration.
+        name: doppler_integration_sendgrid
+        title: doppler_integration_sendgrid Resource - terraform-provider-doppler
+        examples:
+            - name: i_sendgrid
+              manifest: |-
+                {
+                  "api_key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                  "name": "TF SendGrid"
+                }
+              dependencies:
+                doppler_rotated_secret_sendgrid.rs_sendgrid: |-
+                    {
+                      "config": "dev",
+                      "integration": "${doppler_integration_sendgrid.i_sendgrid.id}",
+                      "name": "SENDGRID",
+                      "project": "backend",
+                      "rotation_period_sec": 2592000,
+                      "scopes": [
+                        "alerts.create",
+                        "alerts.read"
+                      ]
+                    }
+        argumentDocs:
+            api_key: (String, Sensitive) The API Key
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_terraform_cloud:
+        subCategory: Integrations
+        description: Manage a Terraform Cloud Doppler integration.
+        name: doppler_integration_terraform_cloud
+        title: doppler_integration_terraform_cloud Resource - terraform-provider-doppler
+        examples:
+            - name: prod
+              manifest: |-
+                {
+                  "api_key": "my_api_key",
+                  "name": "Production"
+                }
+              dependencies:
+                doppler_secrets_sync_terraform_cloud.backend_prod: |-
+                    {
+                      "config": "prd",
+                      "delete_behavior": "leave_in_target",
+                      "integration": "${doppler_integration_terraform_cloud.prod.id}",
+                      "name_transform": "lowercase",
+                      "project": "backend",
+                      "sync_target": "workspace",
+                      "variable_sync_type": "terraform",
+                      "workspace_id": "${data.tfe_workspace.prod.id}"
+                    }
+        argumentDocs:
+            api_key: (String, Sensitive) A Terraform Cloud API key.
+            id: (String) The ID of this resource.
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_integration_twilio:
+        subCategory: Integrations
+        description: Manage a Twilio Doppler integration.
+        name: doppler_integration_twilio
+        title: doppler_integration_twilio Resource - terraform-provider-doppler
+        examples:
+            - name: i_twilio
+              manifest: |-
+                {
+                  "account_sid": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                  "key_secret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                  "key_sid": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                  "name": "TF Twilio"
+                }
+              dependencies:
+                doppler_rotated_secret_twilio.rs_twilio: |-
+                    {
+                      "config": "dev",
+                      "integration": "${doppler_integration_twilio.i_twilio.id}",
+                      "name": "TWILIO",
+                      "project": "backend",
+                      "rotation_period_sec": 2592000
+                    }
+        argumentDocs:
+            account_sid: (String) The Account SID
+            id: (String) The ID of this resource.
+            key_secret: (String, Sensitive) The Key Secret
+            key_sid: (String) The Key SID (cannot equal accountSID)
+            name: (String) The name of the integration
+        importStatements: []
+    doppler_project:
+        subCategory: Project Structure
+        description: Manage a Doppler project.
+        name: doppler_project
+        title: doppler_project Resource - terraform-provider-doppler
+        examples:
+            - name: backend
+              manifest: |-
+                {
+                  "description": "The main backend project",
+                  "name": "backend"
+                }
+        argumentDocs:
+            description: (String) The description of the Doppler project
+            id: (String) The ID of this resource.
+            name: (String) The name of the Doppler project
+        importStatements:
+            - terraform import doppler_project.default <project-name>
+    doppler_project_member_group:
+        subCategory: Project Structure
+        description: Manage a Doppler project group member.
+        name: doppler_project_member_group
+        title: doppler_project_member_group Resource - terraform-provider-doppler
+        examples:
+            - name: backend_engineering
+              manifest: |-
+                {
+                  "environments": [
+                    "dev",
+                    "stg"
+                  ],
+                  "group_slug": "${doppler_group.engineering.slug}",
+                  "project": "backend",
+                  "role": "collaborator"
+                }
+              references:
+                group_slug: doppler_group.engineering.slug
+        argumentDocs:
+            environments: (Set of String) The environments in the project where this access will apply (null or omitted for roles with access to all environments)
+            group_slug: (String) The slug of the Doppler group
+            id: (String) The ID of this resource.
+            project: (String) The name of the Doppler project where the access is applied
+            role: (String) The project role identifier for the access. Must use either one of the built-in project role slugs (admin, owner, collaborator, or no_access), or the slug for a custom project role.
+        importStatements: []
+    doppler_project_member_service_account:
+        subCategory: Project Structure
+        description: Manage a Doppler project service account member.
+        name: doppler_project_member_service_account
+        title: doppler_project_member_service_account Resource - terraform-provider-doppler
+        examples:
+            - name: backend_ci
+              manifest: |-
+                {
+                  "environments": [
+                    "dev",
+                    "stg",
+                    "prd"
+                  ],
+                  "project": "backend",
+                  "role": "viewer",
+                  "service_account_slug": "${doppler_service_account.ci.slug}"
+                }
+              references:
+                service_account_slug: doppler_service_account.ci.slug
+        argumentDocs:
+            environments: (Set of String) The environments in the project where this access will apply (null or omitted for roles with access to all environments)
+            id: (String) The ID of this resource.
+            project: (String) The name of the Doppler project where the access is applied
+            role: (String) The project role identifier for the access. Must use either one of the built-in project role slugs (admin, owner, collaborator, or no_access), or the slug for a custom project role.
+            service_account_slug: (String) The slug of the Doppler service account
+        importStatements: []
+    doppler_project_member_user:
+        subCategory: Project Structure
+        description: Manage a Doppler project user member.
+        name: doppler_project_member_user
+        title: doppler_project_member_user Resource - terraform-provider-doppler
+        examples:
+            - name: backend_brian
+              manifest: |-
+                {
+                  "environments": [
+                    "dev",
+                    "stg"
+                  ],
+                  "project": "backend",
+                  "role": "collaborator",
+                  "user_slug": "${data.doppler_user.brian.slug}"
+                }
+              references:
+                user_slug: data.doppler_user.brian.slug
+        argumentDocs:
+            environments: (Set of String) The environments in the project where this access will apply (null or omitted for roles with access to all environments)
+            id: (String) The ID of this resource.
+            project: (String) The name of the Doppler project where the access is applied
+            role: (String) The project role identifier for the access. Must use either one of the built-in project role slugs (admin, owner, collaborator, or no_access), or the slug for a custom project role.
+            user_slug: (String) The slug of the Doppler workplace user
+        importStatements: []
+    doppler_project_role:
+        subCategory: Roles
+        description: Manage a Doppler project role.
+        name: doppler_project_role
+        title: doppler_project_role Resource - terraform-provider-doppler
+        examples:
+            - name: log_viewer
+              manifest: |-
+                {
+                  "name": "Log Viewer",
+                  "permissions": [
+                    "enclave_config_logs"
+                  ]
+                }
+        argumentDocs:
+            id: (String) The ID of this resource.
+            identifier: (String) The role's unique identifier
+            is_custom_role: (Boolean) Whether or not the role is custom (as opposed to Doppler built-in)
+            name: (String) The name of the Doppler project role
+            permissions: (Set of String) A list of Doppler project permissions
+        importStatements:
+            - terraform import doppler_project_role.default <project-role-identifier>
+    doppler_rotated_secret_aws_iam_user_keys Resource - terraform-provider-doppler:
+        subCategory: ""
+        name: doppler_rotated_secret_aws_iam_user_keys Resource - terraform-provider-doppler
+        title: doppler_rotated_secret_aws_iam_user_keys Resource - terraform-provider-doppler
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this rotated secret
+            name: (String) The name of the rotated secret
+            project: (String) The name of the Doppler project
+            rotation_period_sec: (Number) How frequently to rotate the secret
+            username: (String) The IAM username (excluding ARN and scope prefix)
+        importStatements: []
+    doppler_rotated_secret_aws_mssql Resource - terraform-provider-doppler:
+        subCategory: ""
+        name: doppler_rotated_secret_aws_mssql Resource - terraform-provider-doppler
+        title: doppler_rotated_secret_aws_mssql Resource - terraform-provider-doppler
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            credentials: '(Block List, Min: 2, Max: 2) Rotated secret credentials (see below for nested schema)'
+            database: (String) The DB database
+            host: (String) The DB Host
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this rotated secret
+            name: (String) The name of the rotated secret
+            password: (String, Sensitive)
+            port: (Number) The DB Port
+            project: (String) The name of the Doppler project
+            rotation_period_sec: (Number) How frequently to rotate the secret
+            username: (String)
+        importStatements: []
+    doppler_rotated_secret_aws_mysql Resource - terraform-provider-doppler:
+        subCategory: ""
+        name: doppler_rotated_secret_aws_mysql Resource - terraform-provider-doppler
+        title: doppler_rotated_secret_aws_mysql Resource - terraform-provider-doppler
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            credentials: '(Block List, Min: 2, Max: 2) Rotated secret credentials (see below for nested schema)'
+            database: (String) The DB database
+            host: (String) The DB Host
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this rotated secret
+            managing_user_password: (String, Sensitive) The managing user password
+            managing_user_username: (String) The managing user username
+            name: (String) The name of the rotated secret
+            password: (String, Sensitive)
+            port: (Number) The DB Port
+            project: (String) The name of the Doppler project
+            rotation_period_sec: (Number) How frequently to rotate the secret
+            username: (String)
+        importStatements: []
+    doppler_rotated_secret_aws_postgres Resource - terraform-provider-doppler:
+        subCategory: ""
+        name: doppler_rotated_secret_aws_postgres Resource - terraform-provider-doppler
+        title: doppler_rotated_secret_aws_postgres Resource - terraform-provider-doppler
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            credentials: '(Block List, Min: 2, Max: 2) Rotated secret credentials (see below for nested schema)'
+            database: (String) The DB database
+            host: (String) The DB Host
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this rotated secret
+            managing_user_password: (String, Sensitive) The managing user password
+            managing_user_username: (String) The managing user username
+            name: (String) The name of the rotated secret
+            password: (String, Sensitive)
+            port: (Number) The DB Port
+            project: (String) The name of the Doppler project
+            rotation_period_sec: (Number) How frequently to rotate the secret
+            ssl_ca: (String) An optional SSL CA for the AWS region the DB is in
+            username: (String)
+        importStatements: []
+    doppler_rotated_secret_cloudflare_tokens Resource - terraform-provider-doppler:
+        subCategory: ""
+        name: doppler_rotated_secret_cloudflare_tokens Resource - terraform-provider-doppler
+        title: doppler_rotated_secret_cloudflare_tokens Resource - terraform-provider-doppler
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            credentials: '(Block List, Min: 2, Max: 2) Rotated secret credentials (see below for nested schema)'
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this rotated secret
+            name: (String) The name of the rotated secret
+            project: (String) The name of the Doppler project
+            rotation_period_sec: (Number) How frequently to rotate the secret
+            value: (String, Sensitive)
+        importStatements: []
+    doppler_rotated_secret_gcp_cloudsql Resource - terraform-provider-doppler:
+        subCategory: ""
+        name: doppler_rotated_secret_gcp_cloudsql Resource - terraform-provider-doppler
+        title: doppler_rotated_secret_gcp_cloudsql Resource - terraform-provider-doppler
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            credentials: '(Block List, Min: 2, Max: 2) Rotated secret credentials (see below for nested schema)'
+            database_instance: (String) Cloud SQL database instance name
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this rotated secret
+            name: (String) The name of the rotated secret
+            password: (String, Sensitive)
+            project: (String) The name of the Doppler project
+            rotation_period_sec: (Number) How frequently to rotate the secret
+            user_host_name: (String)
+            username: (String)
+        importStatements: []
+    doppler_rotated_secret_gcp_service_account_keys Resource - terraform-provider-doppler:
+        subCategory: ""
+        name: doppler_rotated_secret_gcp_service_account_keys Resource - terraform-provider-doppler
+        title: doppler_rotated_secret_gcp_service_account_keys Resource - terraform-provider-doppler
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this rotated secret
+            name: (String) The name of the rotated secret
+            project: (String) The name of the Doppler project
+            rotation_period_sec: (Number) How frequently to rotate the secret
+            service_account: (String) The Service Account Email whose keys should be rotated
+        importStatements: []
+    doppler_rotated_secret_mongodb_atlas Resource - terraform-provider-doppler:
+        subCategory: ""
+        name: doppler_rotated_secret_mongodb_atlas Resource - terraform-provider-doppler
+        title: doppler_rotated_secret_mongodb_atlas Resource - terraform-provider-doppler
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            credentials: '(Block List, Min: 2, Max: 2) Rotated secret credentials (see below for nested schema)'
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this rotated secret
+            name: (String) The name of the rotated secret
+            password: (String, Sensitive)
+            project: (String) The name of the Doppler project
+            project_id: (String) The Mongo DB Atlas Project ID
+            rotation_period_sec: (Number) How frequently to rotate the secret
+            username: (String)
+        importStatements: []
+    doppler_rotated_secret_openai Resource - terraform-provider-doppler:
+        subCategory: ""
+        name: doppler_rotated_secret_openai Resource - terraform-provider-doppler
+        title: doppler_rotated_secret_openai Resource - terraform-provider-doppler
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this rotated secret
+            name: (String) The name of the rotated secret
+            project: (String) The name of the Doppler project
+            project_id: (String) The OpenAI project ID to create service accounts in
+            rotation_period_sec: (Number) How frequently to rotate the secret
+        importStatements: []
+    doppler_rotated_secret_sendgrid Resource - terraform-provider-doppler:
+        subCategory: ""
+        name: doppler_rotated_secret_sendgrid Resource - terraform-provider-doppler
+        title: doppler_rotated_secret_sendgrid Resource - terraform-provider-doppler
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this rotated secret
+            name: (String) The name of the rotated secret
+            project: (String) The name of the Doppler project
+            rotation_period_sec: (Number) How frequently to rotate the secret
+            scopes: (List of String) SendGrid scopes
+        importStatements: []
+    doppler_rotated_secret_twilio Resource - terraform-provider-doppler:
+        subCategory: ""
+        name: doppler_rotated_secret_twilio Resource - terraform-provider-doppler
+        title: doppler_rotated_secret_twilio Resource - terraform-provider-doppler
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this rotated secret
+            name: (String) The name of the rotated secret
+            project: (String) The name of the Doppler project
+            rotation_period_sec: (Number) How frequently to rotate the secret
+        importStatements: []
+    doppler_secret:
+        subCategory: Secrets
+        description: Manage a single Doppler secret in a config.
+        name: doppler_secret
+        title: doppler_secret Resource - terraform-provider-doppler
+        examples:
+            - name: db_password
+              manifest: |-
+                {
+                  "config": "dev",
+                  "name": "DB_PASSWORD",
+                  "project": "backend",
+                  "value": "${random_password.db_password.result}"
+                }
+              references:
+                value: random_password.db_password.result
+              dependencies:
+                random_password.db_password: |-
+                    {
+                      "length": 32,
+                      "special": true
+                    }
+        argumentDocs:
+            computed: (String, Sensitive) The computed secret value, after resolving secret references
+            config: (String) The name of the Doppler config
+            id: (String) The ID of this resource.
+            name: (String) The name of the Doppler secret
+            project: (String) The name of the Doppler project
+            value: (String, Sensitive) The raw secret value
+            value_type: (String) The value type of the secret
+            visibility: (String) The visibility of the secret. One of masked, unmasked, or restricted. Defaults to masked.
+        importStatements:
+            - terraform import doppler_secret.default <project-name>.<config-name>.<secret-name>
+    doppler_secret_note:
+        subCategory: Secrets
+        description: Manage the note attached to a Doppler secret.
+        name: doppler_secret_note
+        title: doppler_secret_note Resource - terraform-provider-doppler
+        examples:
+            - name: stripe_key
+              manifest: |-
+                {
+                  "name": "STRIPE_SECRET_KEY",
+                  "note": "Owner: payments team. Rotate quarterly via Stripe dashboard.",
+                  "project": "backend"
+                }
+        argumentDocs:
+            id: (String) The ID of this resource.
+            name: (String) The name of the secret. Notes are scoped per project + secret name and apply across all configs.
+            note: (String) The note content to attach to the secret
+            project: (String) The name of the Doppler project that owns the secret
+        importStatements: []
+    doppler_secrets_sync_aws_parameter_store:
+        subCategory: Integrations
+        description: Manage an AWS Parameter Store Doppler sync.
+        name: doppler_secrets_sync_aws_parameter_store
+        title: doppler_secrets_sync_aws_parameter_store Resource - terraform-provider-doppler
+        examples:
+            - name: backend_prod
+              manifest: |-
+                {
+                  "config": "prd",
+                  "delete_behavior": "leave_in_target",
+                  "integration": "${doppler_integration_aws_parameter_store.prod.id}",
+                  "path": "/backend/",
+                  "project": "backend",
+                  "region": "us-east-1",
+                  "secure_string": true,
+                  "tags": {
+                    "myTag": "enabled"
+                  }
+                }
+              references:
+                integration: doppler_integration_aws_parameter_store.prod.id
+              dependencies:
+                aws_iam_role.doppler_parameter_store: |-
+                    {
+                      "assume_role_policy": "${jsonencode({\n    Version = \"2012-10-17\"\n    Statement = [\n      {\n        Effect = \"Allow\"\n        Action = \"sts:AssumeRole\"\n        Principal = {\n          AWS = \"arn:aws:iam::299900769157:user/doppler-integration-operator\"\n        },\n        Condition = {\n          StringEquals = {\n            \"sts:ExternalId\" = \"\u003cYOUR_WORKPLACE_SLUG\u003e\"\n          }\n        }\n      },\n    ]\n  })}",
+                      "inline_policy": [
+                        {
+                          "name": "doppler_secret_manager",
+                          "policy": "${jsonencode({\n      Version = \"2012-10-17\"\n      Statement = [\n        {\n          Action = [\n\n            \"ssm:PutParameter\",\n            \"ssm:LabelParameterVersion\",\n            \"ssm:DeleteParameter\",\n            \"ssm:RemoveTagsFromResource\",\n            \"ssm:GetParameterHistory\",\n            \"ssm:AddTagsToResource\",\n            \"ssm:GetParametersByPath\",\n            \"ssm:GetParameters\",\n            \"ssm:GetParameter\",\n            \"ssm:DeleteParameters\"\n          ]\n          Effect   = \"Allow\"\n          Resource = \"*\"\n          # Limit Doppler to only access certain names\n        },\n      ]\n    })}"
+                        }
+                      ],
+                      "name": "doppler_parameter_store"
+                    }
+                doppler_integration_aws_parameter_store.prod: |-
+                    {
+                      "assume_role_arn": "${aws_iam_role.doppler_parameter_store.arn}",
+                      "name": "Production"
+                    }
+        argumentDocs:
+            advanced_parameter: (Boolean) Whether or not the parameters are explicitly stored as an advanced parameter
+            config: (String) The name of the Doppler config
+            delete_behavior: (String) The behavior to be performed on the secrets in the sync target when this resource is deleted or recreated. Either leave_in_target (default) or delete_from_target.
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this sync
+            kms_key_id: (String) The AWS KMS key used to encrypt the parameter (ID, Alias, or ARN)
+            name_transform: '(String) An optional secret name transformer (e.g. DOPPLER_CONFIG in lower-kebab would be doppler-config). Valid transformers: none, camel, upper-camel, lower-snake, tf-var, dotnet, dotnet-env, lower-kebab'
+            path: (String) The path to the parameters in AWS
+            project: (String) The name of the Doppler project
+            region: (String) The AWS region
+            secure_string: (Boolean) Whether or not the parameters are stored as a secure string
+            sync_strategy: (String) Determines whether secrets are synced to a single secret (single-secret) as a JSON object or multiple discrete secrets (multi-secret). Defaults to multi-secret if unspecified.
+            tags: (Map of String) AWS tags to attach to the parameters
+            update_resource_tags: (String) Behavior for AWS resource tags on updates (never update, upsert tags (leaving non-Doppler tags alone), replace tags (remove non-Doppler tags))
+        importStatements: []
+    doppler_secrets_sync_aws_secrets_manager:
+        subCategory: Integrations
+        description: Manage an AWS Secrets Manager Doppler sync.
+        name: doppler_secrets_sync_aws_secrets_manager
+        title: doppler_secrets_sync_aws_secrets_manager Resource - terraform-provider-doppler
+        examples:
+            - name: backend_prod
+              manifest: |-
+                {
+                  "config": "prd",
+                  "delete_behavior": "leave_in_target",
+                  "integration": "${doppler_integration_aws_secrets_manager.prod.id}",
+                  "path": "/backend/",
+                  "project": "backend",
+                  "region": "us-east-1",
+                  "tags": {
+                    "myTag": "enabled"
+                  }
+                }
+              references:
+                integration: doppler_integration_aws_secrets_manager.prod.id
+              dependencies:
+                aws_iam_role.doppler_secrets_manager: |-
+                    {
+                      "assume_role_policy": "${jsonencode({\n    Version = \"2012-10-17\"\n    Statement = [\n      {\n        Effect = \"Allow\"\n        Action = \"sts:AssumeRole\"\n        Principal = {\n          AWS = \"arn:aws:iam::299900769157:user/doppler-integration-operator\"\n        },\n        Condition = {\n          StringEquals = {\n            \"sts:ExternalId\" = \"\u003cYOUR_WORKPLACE_SLUG\u003e\"\n          }\n        }\n      },\n    ]\n  })}",
+                      "inline_policy": [
+                        {
+                          "name": "doppler_secret_manager",
+                          "policy": "${jsonencode({\n      Version = \"2012-10-17\"\n      Statement = [\n        {\n          Action = [\n\n            \"secretsmanager:GetSecretValue\",\n            \"secretsmanager:DescribeSecret\",\n            \"secretsmanager:PutSecretValue\",\n            \"secretsmanager:CreateSecret\",\n            \"secretsmanager:DeleteSecret\",\n            \"secretsmanager:TagResource\",\n            \"secretsmanager:UpdateSecret\"\n          ]\n          Effect   = \"Allow\"\n          Resource = \"*\"\n          # Limit Doppler to only access certain secret names\n        },\n      ]\n    })}"
+                        }
+                      ],
+                      "name": "doppler_secrets_manager"
+                    }
+                doppler_integration_aws_secrets_manager.prod: |-
+                    {
+                      "assume_role_arn": "${aws_iam_role.doppler_secrets_manager.arn}",
+                      "name": "Production"
+                    }
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            delete_behavior: (String) The behavior to be performed on the secrets in the sync target when this resource is deleted or recreated. Either leave_in_target (default) or delete_from_target.
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this sync
+            kms_key_id: (String) The AWS KMS key used to encrypt the secret (ID, Alias, or ARN)
+            name_transform: '(String) An optional secret name transformer (e.g. DOPPLER_CONFIG in lower-kebab would be doppler-config). Valid transformers: none, camel, upper-camel, lower-snake, tf-var, dotnet, dotnet-env, lower-kebab'
+            path: (String) The path to the secret in AWS
+            path_behavior: (String) The behavior to modify the provided path. Either add_doppler_suffix (default) which appends doppler to the provided path or none which leaves the path unchanged.
+            project: (String) The name of the Doppler project
+            region: (String) The AWS region
+            sync_strategy: (String) Determines whether secrets are synced to a single secret (single-secret) as a JSON object or multiple discrete secrets (multi-secret). Defaults to single-secret if unspecified.
+            tags: (Map of String) AWS tags to attach to the secrets
+            update_metadata: (Boolean) If enabled, Doppler will update the AWS secret metadata (e.g. KMS key) during every sync. If disabled, Doppler will only set secret metadata for new AWS secrets.
+            update_resource_tags: (String) Behavior for AWS resource tags on updates (never update, upsert tags (leaving non-Doppler tags alone), replace tags (remove non-Doppler tags))
+        importStatements: []
+    doppler_secrets_sync_azure_vault:
+        subCategory: Integrations
+        description: Manage an Azure Vault Doppler sync.
+        name: doppler_secrets_sync_azure_vault
+        title: doppler_secrets_sync_azure_vault Resource - terraform-provider-doppler
+        examples:
+            - name: backend_prod
+              manifest: |-
+                {
+                  "config": "prd",
+                  "delete_behavior": "delete_from_target",
+                  "integration": "${doppler_integration_azure_vault_service_principal.prod.id}",
+                  "project": "backend",
+                  "single_secret_name": "DopplerSecrets",
+                  "sync_strategy": "single-secret",
+                  "vault_uri": "https://backend-prd.vault.azure.net/"
+                }
+              references:
+                integration: doppler_integration_azure_vault_service_principal.prod.id
+              dependencies:
+                doppler_integration_azure_vault_service_principal.prod: |-
+                    {
+                      "client_id": "77ed9112-b7f5-4d1d-a60f-198375e7f265",
+                      "client_secret": "kXOQb4juoe~jEqQVQdeXEFhsgIvkmoE0Qz3jBwPo",
+                      "name": "prod",
+                      "tenant_id": "c77d1b3d-6350-4696-b59f-90dae3e0b41e"
+                    }
+            - name: backend_prod
+              manifest: |-
+                {
+                  "config": "prd",
+                  "delete_behavior": "delete_from_target",
+                  "integration": "${doppler_integration_azure_vault_service_principal.prod.id}",
+                  "project": "backend",
+                  "sync_strategy": "multi-secret",
+                  "vault_uri": "https://backend-prd.vault.azure.net/"
+                }
+              references:
+                integration: doppler_integration_azure_vault_service_principal.prod.id
+              dependencies:
+                doppler_integration_azure_vault_service_principal.prod: |-
+                    {
+                      "client_id": "77ed9112-b7f5-4d1d-a60f-198375e7f265",
+                      "client_secret": "kXOQb4juoe~jEqQVQdeXEFhsgIvkmoE0Qz3jBwPo",
+                      "name": "prod",
+                      "tenant_id": "c77d1b3d-6350-4696-b59f-90dae3e0b41e"
+                    }
+            - name: backend_prod
+              manifest: |-
+                {
+                  "config": "prd",
+                  "delete_behavior": "delete_from_target",
+                  "integration": "c38716b1-2b3b-41e3-bc40-c95e55bc339b",
+                  "project": "backend",
+                  "single_secret_name": "DopplerSecrets",
+                  "sync_strategy": "single-secret",
+                  "vault_uri": "https://backend-prd.vault.azure.net/"
+                }
+              dependencies:
+                doppler_integration_azure_vault_service_principal.prod: |-
+                    {
+                      "client_id": "77ed9112-b7f5-4d1d-a60f-198375e7f265",
+                      "client_secret": "kXOQb4juoe~jEqQVQdeXEFhsgIvkmoE0Qz3jBwPo",
+                      "name": "prod",
+                      "tenant_id": "c77d1b3d-6350-4696-b59f-90dae3e0b41e"
+                    }
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            delete_behavior: (String) The behavior to be performed on the secrets in the sync target when this resource is deleted or recreated. Either leave_in_target (default) or delete_from_target.
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this sync
+            project: (String) The name of the Doppler project
+            single_secret_name: (String) The name of the secret being synced to when using the "single-secret" sync strategy. Required when using "single-secret" sync strategy.
+            sync_strategy: (String) Determines whether secrets are synced to a single secret (single-secret) as a JSON object or multiple discrete secrets (multi-secret).
+            vault_uri: (String) The Azure Vault URI for the vault secrets will be synced to.
+        importStatements: []
+    doppler_secrets_sync_circleci:
+        subCategory: Integrations
+        description: Manage a CircleCI Doppler sync.
+        name: doppler_secrets_sync_circleci
+        title: doppler_secrets_sync_circleci Resource - terraform-provider-doppler
+        examples:
+            - name: backend_prod
+              manifest: |-
+                {
+                  "config": "prd",
+                  "delete_behavior": "leave_in_target",
+                  "integration": "${doppler_integration_circleci.prod.id}",
+                  "organization_slug": "myorg",
+                  "project": "backend",
+                  "resource_id": "github/myorg/myproject",
+                  "resource_type": "project"
+                }
+              references:
+                integration: doppler_integration_circleci.prod.id
+              dependencies:
+                doppler_integration_circleci.prod: |-
+                    {
+                      "api_token": "my_api_token",
+                      "name": "Production"
+                    }
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            delete_behavior: (String) The behavior to be performed on the secrets in the sync target when this resource is deleted or recreated. Either leave_in_target (default) or delete_from_target.
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this sync
+            organization_slug: (String) The organization slug where the resource is located
+            project: (String) The name of the Doppler project
+            resource_id: (String) The resource ID (either project or context) to sync to
+            resource_type: (String) Either "project" or "context", based on the resource type to sync to
+        importStatements: []
+    doppler_secrets_sync_flyio:
+        subCategory: Integrations
+        description: Manage a Fly.io Doppler sync.
+        name: doppler_secrets_sync_flyio
+        title: doppler_secrets_sync_flyio Resource - terraform-provider-doppler
+        examples:
+            - name: backend_prod
+              manifest: |-
+                {
+                  "app_id": "my-app",
+                  "config": "prd",
+                  "delete_behavior": "leave_in_target",
+                  "integration": "${doppler_integration_flyio.prod.id}",
+                  "project": "backend",
+                  "restart_machines": true
+                }
+              references:
+                integration: doppler_integration_flyio.prod.id
+              dependencies:
+                doppler_integration_flyio.prod: |-
+                    {
+                      "api_key": "fo1_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                      "name": "TF Fly.io"
+                    }
+        argumentDocs:
+            app_id: (String) The app ID
+            config: (String) The name of the Doppler config
+            delete_behavior: (String) The behavior to be performed on the secrets in the sync target when this resource is deleted or recreated. Either leave_in_target (default) or delete_from_target.
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this sync
+            project: (String) The name of the Doppler project
+            restart_machines: (Boolean) Whether or not to restart the Fly.io machines when secrets are updated
+        importStatements: []
+    doppler_secrets_sync_gcp_secret_manager:
+        subCategory: Integrations
+        description: Manage a GCP Secret Manager Doppler sync.
+        name: doppler_secrets_sync_gcp_secret_manager
+        title: doppler_secrets_sync_gcp_secret_manager Resource - terraform-provider-doppler
+        examples:
+            - name: backend_prod
+              manifest: |-
+                {
+                  "config": "prd",
+                  "delete_behavior": "delete_from_target",
+                  "format": "json",
+                  "integration": "${doppler_integration_gcp_secret_manager.prod.id}",
+                  "name": "backend-prd-secrets",
+                  "project": "backend",
+                  "regions": [
+                    "automatic"
+                  ],
+                  "sync_strategy": "single-secret"
+                }
+              references:
+                integration: doppler_integration_gcp_secret_manager.prod.id
+              dependencies:
+                doppler_integration_gcp_secret_manager.prod: |-
+                    {
+                      "gcp_key": "${var.gcp_key}",
+                      "gcp_secret_prefix": "doppler-",
+                      "name": "prod"
+                    }
+            - name: backend_prod
+              manifest: |-
+                {
+                  "config": "prd",
+                  "delete_behavior": "delete_from_target",
+                  "integration": "${doppler_integration_gcp_secret_manager.prod.id}",
+                  "project": "backend",
+                  "regions": [
+                    "automatic"
+                  ],
+                  "sync_strategy": "multi-secret"
+                }
+              references:
+                integration: doppler_integration_gcp_secret_manager.prod.id
+              dependencies:
+                doppler_integration_gcp_secret_manager.prod: |-
+                    {
+                      "gcp_key": "${var.gcp_key}",
+                      "gcp_secret_prefix": "doppler-",
+                      "name": "prod"
+                    }
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            delete_behavior: (String) The behavior to be performed on the secrets in the sync target when this resource is deleted or recreated. Either leave_in_target (default) or delete_from_target.
+            format: (String) Specifies the format secrets will be stored in. Either env or json. Defaults to json.
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this sync
+            name: (String) The name used to store the secret when sync_strategy is set to single-secret (note that the integration's gcp_secret_prefix will be prepended to this).
+            project: (String) The name of the Doppler project
+            regions: (List of String) The GCP regions used for replication. Can include any supported GCP region or ["automatic"].
+            sync_strategy: (String) Determines whether secrets are synced to a single secret (single-secret) as a JSON object or multiple discrete secrets (multi-secret).
+        importStatements: []
+    doppler_secrets_sync_github_actions:
+        subCategory: Integrations
+        description: Manage a GitHub Actions Doppler sync.
+        name: doppler_secrets_sync_github_actions
+        title: doppler_secrets_sync_github_actions Resource - terraform-provider-doppler
+        examples:
+            - name: backend_prod
+              manifest: |-
+                {
+                  "config": "prd",
+                  "integration": "bae40485-eca7-478b-abd8-34100c82c679",
+                  "project": "backend",
+                  "repo_name": "backend",
+                  "sync_target": "repo"
+                }
+            - name: backend_prod
+              manifest: |-
+                {
+                  "config": "prd",
+                  "environment_name": "production",
+                  "integration": "bae40485-eca7-478b-abd8-34100c82c679",
+                  "project": "backend",
+                  "repo_name": "backend",
+                  "sync_target": "repo"
+                }
+            - name: backend_prod
+              manifest: |-
+                {
+                  "config": "prd",
+                  "integration": "bae40485-eca7-478b-abd8-34100c82c679",
+                  "project": "backend",
+                  "repo_name": "backend",
+                  "sync_target": "repo",
+                  "sync_unmasked_as_variables": true
+                }
+            - name: backend_prod
+              manifest: |-
+                {
+                  "config": "prd",
+                  "integration": "bae40485-eca7-478b-abd8-34100c82c679",
+                  "org_scope": "private",
+                  "project": "backend",
+                  "sync_target": "org"
+                }
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            delete_behavior: (String) The behavior to be performed on the secrets in the sync target when this resource is deleted or recreated. Either leave_in_target (default) or delete_from_target.
+            environment_name: (String) The GitHub repo environment name to sync to (only used when sync_target is set to "repo")
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this sync
+            org_scope: (String) Either "all" or "private", based on the which repos you want to have access (only used when sync_target is set to "org")
+            project: (String) The name of the Doppler project
+            repo_name: (String) The GitHub repo name to sync to (only used when sync_target is set to "repo")
+            sync_target: (String) Either "repo" or "org", based on the resource type to sync to
+            sync_unmasked_as_variables: (Boolean) When enabled, causes secrets with the unmasked visibility type to get synced as GitHub Action Variables. Defaults to false.
+        importStatements: []
+    doppler_secrets_sync_github_agents:
+        subCategory: ""
+        description: Manage a GitHub Copilot Agents Doppler sync.
+        name: doppler_secrets_sync_github_agents
+        title: doppler_secrets_sync_github_agents Resource - terraform-provider-doppler
+        examples:
+            - name: backend_prod
+              manifest: |-
+                {
+                  "config": "prd",
+                  "integration": "bae40485-eca7-478b-abd8-34100c82c679",
+                  "project": "backend",
+                  "repo_name": "backend",
+                  "sync_target": "repo"
+                }
+            - name: backend_prod
+              manifest: |-
+                {
+                  "config": "prd",
+                  "integration": "bae40485-eca7-478b-abd8-34100c82c679",
+                  "org_scope": "private",
+                  "project": "backend",
+                  "sync_target": "org"
+                }
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            delete_behavior: (String) The behavior to be performed on the secrets in the sync target when this resource is deleted or recreated. Either leave_in_target (default) or delete_from_target.
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this sync
+            org_scope: (String) Either "all" or "private", based on the which repos you want to have access (only used when sync_target is set to "org")
+            project: (String) The name of the Doppler project
+            repo_name: (String) The GitHub repo name to sync to (only used when sync_target is set to "repo")
+            sync_target: (String) Either "repo" or "org", based on the resource type to sync to
+            sync_unmasked_as_variables: (Boolean) When enabled, causes secrets with the unmasked visibility type to get synced as GitHub Copilot Agents Variables. Defaults to false.
+        importStatements: []
+    doppler_secrets_sync_github_codespaces:
+        subCategory: ""
+        description: Manage a GitHub Codespaces Doppler sync.
+        name: doppler_secrets_sync_github_codespaces
+        title: doppler_secrets_sync_github_codespaces Resource - terraform-provider-doppler
+        examples:
+            - name: backend_prod
+              manifest: |-
+                {
+                  "config": "prd",
+                  "integration": "bae40485-eca7-478b-abd8-34100c82c679",
+                  "project": "backend",
+                  "repo_name": "backend",
+                  "sync_target": "repo"
+                }
+            - name: backend_prod
+              manifest: |-
+                {
+                  "config": "prd",
+                  "integration": "bae40485-eca7-478b-abd8-34100c82c679",
+                  "org_scope": "private",
+                  "project": "backend",
+                  "sync_target": "org"
+                }
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            delete_behavior: (String) The behavior to be performed on the secrets in the sync target when this resource is deleted or recreated. Either leave_in_target (default) or delete_from_target.
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this sync
+            org_scope: (String) Either "all" or "private", based on the which repos you want to have access (only used when sync_target is set to "org")
+            project: (String) The name of the Doppler project
+            repo_name: (String) The GitHub repo name to sync to (only used when sync_target is set to "repo")
+            sync_target: (String) Either "repo" or "org", based on the resource type to sync to
+        importStatements: []
+    doppler_secrets_sync_github_dependabot:
+        subCategory: ""
+        description: Manage a GitHub Dependabot Doppler sync.
+        name: doppler_secrets_sync_github_dependabot
+        title: doppler_secrets_sync_github_dependabot Resource - terraform-provider-doppler
+        examples:
+            - name: backend_prod
+              manifest: |-
+                {
+                  "config": "prd",
+                  "integration": "bae40485-eca7-478b-abd8-34100c82c679",
+                  "project": "backend",
+                  "repo_name": "backend",
+                  "sync_target": "repo"
+                }
+            - name: backend_prod
+              manifest: |-
+                {
+                  "config": "prd",
+                  "integration": "bae40485-eca7-478b-abd8-34100c82c679",
+                  "org_scope": "private",
+                  "project": "backend",
+                  "sync_target": "org"
+                }
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            delete_behavior: (String) The behavior to be performed on the secrets in the sync target when this resource is deleted or recreated. Either leave_in_target (default) or delete_from_target.
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this sync
+            org_scope: (String) Either "all" or "private", based on the which repos you want to have access (only used when sync_target is set to "org")
+            project: (String) The name of the Doppler project
+            repo_name: (String) The GitHub repo name to sync to (only used when sync_target is set to "repo")
+            sync_target: (String) Either "repo" or "org", based on the resource type to sync to
+        importStatements: []
+    doppler_secrets_sync_terraform_cloud:
+        subCategory: Integrations
+        description: Manage a Terraform Cloud Doppler sync.
+        name: doppler_secrets_sync_terraform_cloud
+        title: doppler_secrets_sync_terraform_cloud Resource - terraform-provider-doppler
+        examples:
+            - name: backend_prod
+              manifest: |-
+                {
+                  "config": "prd",
+                  "delete_behavior": "leave_in_target",
+                  "integration": "${doppler_integration_terraform_cloud.prod.id}",
+                  "name_transform": "lowercase",
+                  "project": "backend",
+                  "sync_target": "workspace",
+                  "variable_sync_type": "terraform",
+                  "workspace_id": "${data.tfe_workspace.prod.id}"
+                }
+              references:
+                integration: doppler_integration_terraform_cloud.prod.id
+                workspace_id: data.tfe_workspace.prod.id
+              dependencies:
+                doppler_integration_terraform_cloud.prod: |-
+                    {
+                      "api_key": "my_api_key",
+                      "name": "Production"
+                    }
+        argumentDocs:
+            config: (String) The name of the Doppler config
+            delete_behavior: (String) The behavior to be performed on the secrets in the sync target when this resource is deleted or recreated. Either leave_in_target (default) or delete_from_target.
+            id: (String) The ID of this resource.
+            integration: (String) The slug of the integration to use for this sync
+            name_transform: '(String) A name transform to apply before syncing secrets: "none" or "lowercase"'
+            project: (String) The name of the Doppler project
+            sync_target: (String) Either "workspace" or "variableSet", based on the resource type to sync to
+            variable_set_id: (String) The Terraform Cloud variable set ID to sync to
+            variable_sync_type: (String) Either "terraform" to sync secrets as Terraform variables or "env" to sync as environment variables
+            workspace_id: (String) The Terraform Cloud workspace ID to sync to
+        importStatements: []
+    doppler_service_account:
+        subCategory: Service Accounts
+        description: Manage a Doppler service account.
+        name: doppler_service_account
+        title: doppler_service_account Resource - terraform-provider-doppler
+        examples:
+            - name: ci
+              manifest: |-
+                {
+                  "name": "ci",
+                  "workplace_role": "collaborator"
+                }
+        argumentDocs:
+            id: (String) The ID of this resource.
+            name: (String) The name of the service account
+            slug: (String) The slug of the service account
+            workplace_permissions: (List of String) A list of the workplace permissions for the service account (or use workplace_role)
+            workplace_role: (String) The identifier of the workplace role for the service account (or use workplace_permissions)
+        importStatements:
+            - |-
+              # import using the service account slug from the URL:
+              # https://dashboard.doppler.com/workplace/[workplace-slug]/team/service_accounts/[service-account-slug]
+              terraform import doppler_service_account.default <service-account-slug>
+    doppler_service_account_identity:
+        subCategory: Service Accounts
+        description: Manage a Doppler service account identity.
+        name: doppler_service_account_identity
+        title: doppler_service_account_identity Resource - terraform-provider-doppler
+        examples:
+            - name: github_oidc
+              manifest: |-
+                {
+                  "config_oidc": [
+                    {
+                      "claims": [
+                        {
+                          "key": "aud",
+                          "values": [
+                            "https://github.com/DopplerHQ"
+                          ]
+                        },
+                        {
+                          "key": "sub",
+                          "values": [
+                            "repo:DopplerHQ/terraform-provider-doppler:pull_request",
+                            "repo:DopplerHQ/terraform-provider-doppler:ref:refs/heads/feature*"
+                          ]
+                        }
+                      ],
+                      "claims_type": "wildcard",
+                      "discovery_url": "https://token.actions.githubusercontent.com"
+                    }
+                  ],
+                  "name": "GitHub Actions OIDC",
+                  "service_account_slug": "${doppler_service_account.ci.slug}",
+                  "ttl_seconds": 600
+                }
+              references:
+                service_account_slug: doppler_service_account.ci.slug
+              dependencies:
+                doppler_service_account.ci: |-
+                    {
+                      "name": "ci",
+                      "workplace_role": "collaborator"
+                    }
+        argumentDocs:
+            claims: '(Block Set, Min: 2) A set of valid values for a specific claim. At least "aud" and "sub" must be provided (see below for nested schema)'
+            claims_type: (String) If "wildcard", wildcard characters will be expanded during claims validation. Defaults to "exact"
+            config_oidc: '(Block List, Min: 1, Max: 1) The OIDC configuration for the identity (see below for nested schema)'
+            discovery_url: (String) The public URL of the OpenID discovery service
+            id: (String) The ID of this resource.
+            key: (String) The key of the claim to validate
+            name: (String) The display name of the service account identity
+            service_account_slug: (String) Slug of the service account
+            slug: (String) Slug of the service account identity
+            ttl_seconds: (Number) The amount of time, in seconds, that auth tokens for this identity will be valid
+            values: (Set of String) The set of valid values for this claim
+        importStatements:
+            - terraform import doppler_service_account_identity.default <service-account-slug>.<service-account-identity-slug>
+    doppler_service_account_token:
+        subCategory: Service Accounts
+        description: Manage a Doppler service account token.
+        name: doppler_service_account_token
+        title: doppler_service_account_token Resource - terraform-provider-doppler
+        examples:
+            - name: builder_ci_token
+              manifest: |-
+                {
+                  "expires_at": "2024-05-30T11:00:00.000Z",
+                  "name": "Builder CI Token",
+                  "service_account_slug": "${doppler_service_account.ci.slug}"
+                }
+              references:
+                service_account_slug: doppler_service_account.ci.slug
+              dependencies:
+                doppler_service_account.ci: |-
+                    {
+                      "name": "ci",
+                      "workplace_role": "collaborator"
+                    }
+        argumentDocs:
+            api_key: (String, Sensitive) The api key used to authenticate the service account
+            created_at: (String) The datetime that the token was created.
+            expires_at: (String) The datetime at which the API token should expire. If not provided, the API token will remain valid indefinitely unless manually revoked
+            id: (String) The ID of this resource.
+            name: (String) The display name of the API token
+            service_account_slug: (String) Slug of the service account
+            slug: (String) Slug of the service account token
+        importStatements: []
+    doppler_service_token:
+        subCategory: Service Tokens
+        description: Manage a Doppler service token.
+        name: doppler_service_token
+        title: doppler_service_token Resource - terraform-provider-doppler
+        examples:
+            - name: backend_ci_token
+              manifest: |-
+                {
+                  "access": "read",
+                  "config": "ci",
+                  "name": "Builder Token",
+                  "project": "backend"
+                }
+        argumentDocs:
+            access: (String) The access level (read or read/write)
+            config: (String) The name of the Doppler config where the service token is located
+            id: (String) The ID of this resource.
+            key: (String, Sensitive) The key for the Doppler service token
+            name: (String) The name of the Doppler service token
+            project: (String) The name of the Doppler project where the service token is located
+        importStatements: []
+    doppler_trusted_ips:
+        subCategory: Configs
+        description: Manage the trusted IP allowlist for a Doppler config.
+        name: doppler_trusted_ips
+        title: doppler_trusted_ips Resource - terraform-provider-doppler
+        examples:
+            - name: backend_prd
+              manifest: |-
+                {
+                  "config": "prd",
+                  "project": "backend",
+                  "trusted_ips": [
+                    "203.0.113.0/24",
+                    "198.51.100.5/32",
+                    "2001:db8::1/128"
+                  ]
+                }
+            - name: backend_stg
+              manifest: |-
+                {
+                  "config": "stg",
+                  "project": "backend",
+                  "trusted_ips": [
+                    "203.0.113.0/24"
+                  ]
+                }
+            - name: backend_dev
+              manifest: |-
+                {
+                  "config": "dev",
+                  "project": "backend",
+                  "trusted_ips": [
+                    "0.0.0.0/0"
+                  ]
+                }
+        argumentDocs:
+            /32: for an exact IPv4 address and /128 for an exact IPv6 address (e.g. 1.2.3.4/32 or 2001:db8::1/128).
+            '["0.0.0.0/0"]': (allow all traffic). Deleting this resource restores that default.
+            config: (String) The name of the Doppler config
+            id: (String) The ID of this resource.
+            project: (String) The name of the Doppler project where the config is located
+            trusted_ips: (Set of String) List of trusted IP ranges in CIDR notation (e.g. 203.0.113.0/24, 1.2.3.4/32). Use 0.0.0.0/0 to allow all traffic.
+        importStatements:
+            - terraform import doppler_trusted_ips.backend_prd backend.prd
+    doppler_webhook:
+        subCategory: Webhooks
+        description: Manage a Doppler Webhook.
+        name: doppler_webhook
+        title: doppler_webhook Resource - terraform-provider-doppler
+        examples:
+            - name: ci
+              manifest: |-
+                {
+                  "authentication": [
+                    {
+                      "token": "my bearer token",
+                      "type": "Bearer"
+                    }
+                  ],
+                  "enabled": true,
+                  "enabled_configs": [
+                    "${doppler_config.ci_github.name}"
+                  ],
+                  "name": "My Webhook",
+                  "payload": "${jsonencode({\n    myKey = \"my value\"\n  })}",
+                  "project": "${doppler_project.test_proj.name}",
+                  "secret": "my signing secret-2",
+                  "url": "https://localhost/webhook"
+                }
+              references:
+                enabled_configs: doppler_config.ci_github.name
+                project: doppler_project.test_proj.name
+        argumentDocs:
+            authentication: '(Block List, Max: 1) Authentication method used by the webhook (see below for nested schema)'
+            enabled: (Boolean) Whether the webhook is enabled or disabled.  Default to true.
+            enabled_configs: (Set of String) Configs this webhook will trigger for
+            id: (String) The ID of this resource.
+            name: (String) Name of the webhook
+            password: (String, Sensitive)
+            payload: (String, Sensitive) The webhook's payload as a JSON string.  Leave empty to use the default webhook payload
+            project: (String) The name of the Doppler project where the webhook is located
+            secret: (String, Sensitive) Secret used for request signing
+            slug: (String) The slug of the Webhook
+            token: (String, Sensitive)
+            type: (String)
+            url: (String) The URL of the webhook endpoint
+            username: (String)
+        importStatements: []
+    doppler_workplace_role:
+        subCategory: Roles
+        description: Manage a Doppler workplace role.
+        name: doppler_workplace_role
+        title: doppler_workplace_role Resource - terraform-provider-doppler
+        examples:
+            - name: team_manager
+              manifest: |-
+                {
+                  "name": "Team Manager",
+                  "permissions": [
+                    "team_manage"
+                  ]
+                }
+        argumentDocs:
+            id: (String) The ID of this resource.
+            identifier: (String) The role's unique identifier
+            is_custom_role: (Boolean) Whether or not the role is custom (as opposed to Doppler built-in)
+            name: (String) The name of the Doppler workplace role
+            permissions: (Set of String) A list of Doppler workplace permissions
+        importStatements:
+            - terraform import doppler_workplace_role.default <workplace-role-identifier>
