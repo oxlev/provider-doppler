@@ -52,6 +52,11 @@ Doppler reconciliation works.
 
 Before release, run the disposable-project checklist in README.md. Review CRD
 changes for compatibility and confirm both image architectures work. Publish only
-an explicitly chosen version after review; merging a PR does not publish a package.
-Private GHCR packages require Crossplane `packagePullSecrets`. Changing repository
-or package visibility to public is a separate owner decision.
+an explicitly chosen version after review. Merges to main publish immutable
+SHA-tagged development packages; version-tag pushes publish release/prerelease
+tags. Pull requests never publish. Every published package gets a credential-free
+kind smoke test, separate from live Doppler acceptance testing.
+
+This repository is public. GHCR package visibility is separate and must be set to
+public by an owner after its initial push for anonymous installation. Private
+packages require Crossplane `packagePullSecrets`.

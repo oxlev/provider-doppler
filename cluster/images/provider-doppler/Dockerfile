@@ -1,4 +1,7 @@
 FROM alpine:3.23.4
+LABEL org.opencontainers.image.source="https://github.com/oxlev/provider-doppler"
+LABEL org.opencontainers.image.description="Crossplane provider for Doppler, built with Upjet"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
 RUN apk --no-cache add ca-certificates bash
 
 ARG TARGETOS

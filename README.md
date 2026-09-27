@@ -5,7 +5,9 @@
 An experimental Crossplane provider generated with Upjet v2 from
 [Doppler's Terraform provider](https://github.com/DopplerHQ/terraform-provider-doppler),
 pinned to **1.21.5**. All managed APIs are **v1alpha1**; live acceptance tests
-are required before a production release. No package has been published.
+are required before a production release. Development packages are published to
+`ghcr.io/oxlev/provider-doppler` after CI passes; see the publishing job summary
+for the exact immutable SHA tag.
 
 ## Supported resources
 
@@ -31,13 +33,17 @@ parent identifiers are supplied through `forProvider` or references. Project
 
 ### 1. Install a package
 
-There is no published release yet. Build and push an alpha package to a registry
-you control (requires Docker, Go, the Crossplane CLI, and registry push access):
+Use `ghcr.io/oxlev/provider-doppler:v0.0.0-sha.<full-commit-SHA>` from a successful
+CI publishing job. Version tags (`vX.Y.Z` or prereleases) publish that version.
+These are multi-platform packages for amd64 and arm64. There is no floating
+`latest` tag and a development build is not a production release.
+
+Alternatively, build and push to a registry you control (requires Docker, Go,
+the Crossplane CLI, and registry push access):
 
 ```sh
 git clone --recurse-submodules https://github.com/oxlev/provider-doppler.git
 cd provider-doppler
-# Until the initial PR merges, check out feat/doppler-provider.
 make build.all PLATFORMS=linux_amd64 VERSION=v0.1.0-alpha.1
 # Authenticate to your registry using its recommended login mechanism first.
 # Replace REGISTRY/OWNER with your registry and organization.
@@ -160,9 +166,30 @@ The runtime image includes Terraform and the pinned Doppler plugin and runs as a
 non-root user. CI has separate formatting/workflow-lint/vet, generation-drift,
 and race-enabled unit-test jobs. After these pass, it builds installable `.xpkg`
 artifacts for both amd64 and arm64, available from the Actions run for 14 days.
-CI needs no Doppler credentials and does not publish images or touch live APIs.
-Release publishing remains a deliberate maintainer action; the quick start shows
-the package build/push process. Live lifecycle testing remains a release gate.
+PR CI needs no credentials and never publishes. Trusted pushes to `main` and
+version tags publish multi-platform packages using the job-scoped `GITHUB_TOKEN`
+with `packages: write`. The `ci/ghcr-publishing` bootstrap branch may publish SHA
+tags only, so this pipeline can be tested before merge. Publishing is followed
+by an isolated kind smoke test with no Doppler credentials or live API calls.
+
+GitHub container packages initially default to private even in a public repository.
+After the first push, an organization owner must set the package visibility to
+public in GHCR package settings for anonymous installation; the smoke job
+intentionally checks anonymous pulls. No registry secret is used to mask a
+visibility problem. Live Doppler lifecycle testing remains a release gate.
+
+Run the same disposable-cluster smoke test locally (requires kind, kubectl, Helm,
+and Docker):
+
+```sh
+PROVIDER_PACKAGE=ghcr.io/oxlev/provider-doppler:v0.0.0-sha.<full-commit-SHA> \
+  bash scripts/kind-smoke.sh
+```
+
+The script uses a private temporary kubeconfig, refuses to reuse existing clusters,
+and deletes only its own cluster on exit. It verifies package health, CRDs in both
+API scopes, and safe reconciliation failure for missing credentials. It does not
+claim to validate create/update/delete in Doppler.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for validation and provider conventions.
 
