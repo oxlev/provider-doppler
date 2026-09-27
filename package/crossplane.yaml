@@ -1,0 +1,24 @@
+apiVersion: meta.pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-doppler
+  annotations:
+    meta.crossplane.io/maintainer: Oxlev
+    meta.crossplane.io/source: github.com/oxlev/provider-doppler
+    meta.crossplane.io/license: Apache-2.0
+    meta.crossplane.io/description: |
+      Manage Doppler projects, environments, configs, and secrets with Crossplane.
+    meta.crossplane.io/readme: |
+      provider-doppler is an alpha Crossplane provider built with Upjet v2 and
+      the Doppler Terraform provider. It supports namespaced and legacy
+      cluster-scoped managed resources, resource references, and Kubernetes
+      Secret-backed authentication and secret values.
+
+      See https://github.com/oxlev/provider-doppler/blob/main/README.md for
+      installation, authentication, examples, adoption, and deletion guidance.
+      Live Doppler acceptance testing is required before production use.
+spec:
+  crossplane:
+    version: '>=v2.2.1-0'
+  capabilities:
+    - safe-start
