@@ -9,6 +9,7 @@ package v1alpha1
 import (
 	"context"
 	reference "github.com/crossplane/crossplane-runtime/v2/pkg/reference"
+	references "github.com/oxlev/provider-doppler/internal/references"
 	errors "github.com/pkg/errors"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -22,7 +23,7 @@ func (mg *Config) ResolveReferences(ctx context.Context, c client.Reader) error 
 
 	rsp, err = r.Resolve(ctx, reference.ResolutionRequest{
 		CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.Environment),
-		Extract:      reference.ExternalName(),
+		Extract:      references.ReadyExternalName(),
 		Namespace:    mg.GetNamespace(),
 		Reference:    mg.Spec.ForProvider.EnvironmentRef,
 		Selector:     mg.Spec.ForProvider.EnvironmentSelector,
@@ -39,7 +40,7 @@ func (mg *Config) ResolveReferences(ctx context.Context, c client.Reader) error 
 
 	rsp, err = r.Resolve(ctx, reference.ResolutionRequest{
 		CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.Project),
-		Extract:      reference.ExternalName(),
+		Extract:      references.ReadyExternalName(),
 		Namespace:    mg.GetNamespace(),
 		Reference:    mg.Spec.ForProvider.ProjectRef,
 		Selector:     mg.Spec.ForProvider.ProjectSelector,
@@ -66,7 +67,7 @@ func (mg *Environment) ResolveReferences(ctx context.Context, c client.Reader) e
 
 	rsp, err = r.Resolve(ctx, reference.ResolutionRequest{
 		CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.Project),
-		Extract:      reference.ExternalName(),
+		Extract:      references.ReadyExternalName(),
 		Namespace:    mg.GetNamespace(),
 		Reference:    mg.Spec.ForProvider.ProjectRef,
 		Selector:     mg.Spec.ForProvider.ProjectSelector,
@@ -93,7 +94,7 @@ func (mg *Secret) ResolveReferences(ctx context.Context, c client.Reader) error 
 
 	rsp, err = r.Resolve(ctx, reference.ResolutionRequest{
 		CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.Config),
-		Extract:      reference.ExternalName(),
+		Extract:      references.ReadyExternalName(),
 		Namespace:    mg.GetNamespace(),
 		Reference:    mg.Spec.ForProvider.ConfigRef,
 		Selector:     mg.Spec.ForProvider.ConfigSelector,
@@ -110,7 +111,7 @@ func (mg *Secret) ResolveReferences(ctx context.Context, c client.Reader) error 
 
 	rsp, err = r.Resolve(ctx, reference.ResolutionRequest{
 		CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.Project),
-		Extract:      reference.ExternalName(),
+		Extract:      references.ReadyExternalName(),
 		Namespace:    mg.GetNamespace(),
 		Reference:    mg.Spec.ForProvider.ProjectRef,
 		Selector:     mg.Spec.ForProvider.ProjectSelector,

@@ -55,6 +55,7 @@ type ConfigParameters struct {
 	// (String) The name of the Doppler environment where the config is located
 	// The name of the Doppler environment where the config is located
 	// +crossplane:generate:reference:type=github.com/oxlev/provider-doppler/apis/cluster/secrets/v1alpha1.Environment
+	// +crossplane:generate:reference:extractor=github.com/oxlev/provider-doppler/internal/references.ReadyExternalName()
 	// +kubebuilder:validation:Optional
 	Environment *string `json:"environment,omitempty" tf:"environment,omitempty"`
 
@@ -79,6 +80,7 @@ type ConfigParameters struct {
 	// (String) The name of the Doppler project where the config is located
 	// The name of the Doppler project where the config is located
 	// +crossplane:generate:reference:type=github.com/oxlev/provider-doppler/apis/cluster/secrets/v1alpha1.Project
+	// +crossplane:generate:reference:extractor=github.com/oxlev/provider-doppler/internal/references.ReadyExternalName()
 	// +kubebuilder:validation:Optional
 	Project *string `json:"project,omitempty" tf:"project,omitempty"`
 

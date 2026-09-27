@@ -21,6 +21,8 @@ import (
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	"github.com/oxlev/provider-doppler/internal/references"
+
 	v1alpha1 "github.com/oxlev/provider-doppler/apis/cluster/secrets/v1alpha1"
 	features "github.com/oxlev/provider-doppler/internal/features"
 )
@@ -52,6 +54,7 @@ func Setup(mgr ctrl.Manager, o tjcontroller.Options) error {
 	eventHandler := handler.NewEventHandler(handler.WithLogger(o.Logger.WithValues("gvk", v1alpha1.Environment_GroupVersionKind)))
 	ac := tjcontroller.NewAPICallbacks(mgr, xpresource.ManagedKind(v1alpha1.Environment_GroupVersionKind), tjcontroller.WithEventHandler(eventHandler))
 	opts := []managed.ReconcilerOption{
+		managed.WithReferenceResolver(references.NewResolver(mgr.GetClient())),
 		managed.WithExternalConnecter(tjcontroller.NewConnector(mgr.GetClient(), o.WorkspaceStore, o.SetupFn, o.Provider.Resources["doppler_environment"], tjcontroller.WithLogger(o.Logger), tjcontroller.WithConnectorEventHandler(eventHandler),
 			tjcontroller.WithCallbackProvider(ac),
 		)),

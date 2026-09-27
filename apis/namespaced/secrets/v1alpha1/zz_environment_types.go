@@ -57,6 +57,7 @@ type EnvironmentParameters struct {
 	// (String) The name of the Doppler project where the environment is located
 	// The name of the Doppler project where the environment is located
 	// +crossplane:generate:reference:type=github.com/oxlev/provider-doppler/apis/namespaced/secrets/v1alpha1.Project
+	// +crossplane:generate:reference:extractor=github.com/oxlev/provider-doppler/internal/references.ReadyExternalName()
 	// +kubebuilder:validation:Optional
 	Project *string `json:"project,omitempty" tf:"project,omitempty"`
 
