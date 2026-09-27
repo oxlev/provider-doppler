@@ -48,6 +48,50 @@ The quick-start example instead adopts the `ci` root config that Doppler creates
 with the environment, using `managementPolicies: [Observe]`. This validates
 Config observation, not branch-config creation.
 
+### Plain Terraform reproduction
+
+Using the same token, Terraform 1.5.7 and Doppler provider 1.21.5, a disposable
+branch named `ci_tf_probe` was tested under the existing test project's `ci`
+environment:
+
+1. `terraform import doppler_config.probe PROJECT.ci.ci_tf_probe` failed during
+   refresh with the same access error while the config did not exist.
+2. `terraform apply` from empty resource state then successfully created that
+   exact config. The plan contained one create and no updates or deletions.
+3. Crossplane subsequently adopted the config with `managementPolicies: [Observe]`
+   and reached Ready.
+
+This confirms the token can create branch configs and isolates the failure to
+reading a nonexistent config, not missing create permissions or references.
+Unlike plain Terraform's empty-state create, Upjet synthesizes state from the
+external identifier and performs a read before attempting creation.
+
+Minimal configuration (supply `DOPPLER_TOKEN` through a secure environment, not
+in this file; use a disposable project/environment and an unused branch name):
+
+```hcl
+terraform {
+  required_providers {
+    doppler = {
+      source  = "dopplerhq/doppler"
+      version = "1.21.5"
+    }
+  }
+}
+provider "doppler" {}
+resource "doppler_config" "probe" {
+  project     = "YOUR_DISPOSABLE_PROJECT"
+  environment = "ci"
+  name        = "ci_tf_probe"
+  lifecycle { prevent_destroy = true }
+}
+```
+
+Do not bypass refresh or classify the access error as not-found as a general
+workaround. The successful Terraform-created branch is left in place; Crossplane
+only observes it, and the Terraform workspace/state is outside the repository
+in a permission-restricted temporary directory.
+
 ## Live validation
 
 A locally rebuilt controller was layered on the public package runtime and loaded
@@ -61,6 +105,11 @@ published package and Terraform plugin are unchanged.
   compared values in memory and did not print them.
 - A fresh branch-config test still encountered the upstream HTTP 400 limitation
   and was paused to stop retries.
+- After a provider Deployment restart (losing its ephemeral Terraform workspaces),
+  another input-Secret update propagated to Doppler. The fresh test chain remained
+  Ready/Synced and its managed-resource JSON did not expose the test secret value.
+- Plain Terraform created a branch successfully; Crossplane observed that branch
+  successfully, as detailed above.
 
 All test resources omit Delete. Removing their Kubernetes manifests or the kind
 cluster does **not** clean up Doppler projects. Clean up externally only after
@@ -71,4 +120,4 @@ merge-patch type, optimistic locking, and readiness gating across both scopes.
 The full Go test suite and vet pass; targeted resolver/config/client tests also
 pass under the race detector. This is not the full production acceptance matrix:
 branch lifecycle, deletion, external drift, credential isolation live tests, and
-restart/recovery still need broader validation.
+broader restart/recovery scenarios still need validation.
