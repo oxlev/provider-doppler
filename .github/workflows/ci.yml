@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, 'release-*']
+    # The bootstrap branch publishes SHA tags only, to validate publishing before merge.
+    branches: [main, 'release-*', ci/ghcr-publishing]
+    tags: ['v*']
   pull_request: {}
   workflow_dispatch: {}
 
@@ -94,3 +96,70 @@ jobs:
           path: _output/xpkg/linux_${{ matrix.arch }}/*.xpkg
           if-no-files-found: error
           retention-days: 14
+
+  publish:
+    needs: build-package
+    # Never publish from PR code, forks, or arbitrary workflow_dispatch branches.
+    if: >-
+      github.repository == 'oxlev/provider-doppler' &&
+      github.event_name != 'pull_request' &&
+      (github.ref == 'refs/heads/main' ||
+       github.ref == 'refs/heads/ci/ghcr-publishing' ||
+       startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      package: ${{ steps.publish.outputs.package }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: provider-doppler-linux-*
+          path: packages
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Crossplane CLI
+        run: |
+          curl -fsSLo /tmp/crossplane https://releases.crossplane.io/stable/v2.2.1/bin/linux_amd64/crank
+          chmod +x /tmp/crossplane
+      - name: Publish multi-platform package
+        id: publish
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          version="v0.0.0-sha.${GITHUB_SHA}"
+          if [[ "$REF_TYPE" == tag ]]; then
+            [[ "$REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || exit 1
+            version="$REF_NAME"
+          fi
+          package="ghcr.io/oxlev/provider-doppler:${version}"
+          files=$(find packages -name '*.xpkg' -type f | sort | paste -sd,)
+          test "$(find packages -name '*.xpkg' -type f | wc -l)" -eq 2
+          /tmp/crossplane xpkg push --package-files "$files" "$package"
+          echo "package=$package" >> "$GITHUB_OUTPUT"
+          echo "Published \`$package\` (amd64 + arm64)" >> "$GITHUB_STEP_SUMMARY"
+
+  kind-smoke:
+    needs: publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install kind and Helm
+        run: |
+          curl -fsSLo /tmp/kind https://kind.sigs.k8s.io/dl/v0.31.0/kind-linux-amd64
+          chmod +x /tmp/kind
+          sudo mv /tmp/kind /usr/local/bin/kind
+          curl -fsSLo /tmp/helm.tgz https://get.helm.sh/helm-v3.17.3-linux-amd64.tar.gz
+          tar -xzf /tmp/helm.tgz -C /tmp
+          sudo mv /tmp/linux-amd64/helm /usr/local/bin/helm
+      - name: Verify anonymous installation from GHCR in disposable kind
+        env:
+          PROVIDER_PACKAGE: ${{ needs.publish.outputs.package }}
+        run: bash scripts/kind-smoke.sh
