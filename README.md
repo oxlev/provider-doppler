@@ -156,10 +156,17 @@ If both are set, they must agree; renaming through this API is not supported.
 
 ### Known live-test limitations
 
-Doppler can return HTTP 400 (`This token does not have access to requested config`)
-for a nonexistent config rather than 404. The creation path above avoids that
-read, but adoption of a missing config and recovery after external deletion still
-fail closed. Authorization errors are never reinterpreted as absence.
+**Automatic Config recovery after external deletion is not guaranteed.** Doppler
+has returned HTTP 400 (`This token does not have access to requested config`)
+for a missing config, although a later test with the same installed token returned
+404. The creation path above avoids this read for new resources.
+
+When Doppler returns an unambiguous 404, the normal Terraform/Crossplane path can
+recreate a missing config if `Create` is allowed. If it returns the ambiguous
+access error, reconciliation fails closed and requires operator investigation.
+Observe-only resources are never recreated. Authorization errors are not treated
+as absence, and an absent entry in a potentially permission-filtered config list
+is not sufficient proof of deletion. See the [recovery investigation](docs/config-recovery.md).
 
 Do not simply remove the external-name annotation to retry an existing resource.
 First confirm its identity and whether it exists. If creation succeeded but its

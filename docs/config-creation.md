@@ -65,7 +65,9 @@ existing config name and start with `managementPolicies: [Observe]`.
   remote config, then explicitly adopt it; do not delete it just to unblock a test.
 - A config that is externally deleted after creation still has a confirmed
   identity. Its refresh may return Doppler's ambiguous access error; automatic
-  recovery remains blocked rather than risking unauthorized adoption/recreation.
+  recovery remains blocked on that ambiguous response rather than risking
+  unauthorized adoption/recreation. A normal 404 permits the standard recovery
+  path when Create is allowed; see the [follow-up investigation](config-recovery.md).
 - Observe-only Configs require an explicit external name to identify what to
   observe. Renaming a managed config is intentionally unsupported.
 
@@ -75,6 +77,9 @@ Using the existing disposable kind cluster, a local package containing the new
 Config CRDs was installed through the loopback address of a test registry sidecar
 in Crossplane's pod (no Service or host port exposed), with a kind-loaded controller image selected by DeploymentRuntimeConfig.
 The registry and package are local test artifacts, not published releases.
+The registry was subsequently given PVC-backed storage after its original
+container-local storage was lost during a cluster restart; its test package was
+restored and the Provider returned to Healthy.
 
 Verified with Terraform 1.5.7, Doppler provider 1.21.5, and Crossplane 2.4.2:
 
