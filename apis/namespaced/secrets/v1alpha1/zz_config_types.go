@@ -22,6 +22,10 @@ type ConfigInitParameters struct {
 	// (List of String) A list of other Doppler config descriptors that this config inherits from. Descriptors match the format "project.config" (e.g. backend.stg), which is most easily retrieved as the computed descriptor of a doppler_config resource (e.g. doppler_config.backend_stg.descriptor)
 	// A list of other Doppler config descriptors that this config inherits from. Descriptors match the format "project.config" (e.g. backend.stg), which is most easily retrieved as the computed descriptor of a doppler_config resource (e.g. doppler_config.backend_stg.descriptor)
 	Inherits []*string `json:"inherits,omitempty" tf:"inherits,omitempty"`
+
+	// (String) The name of the Doppler config
+	// The name of the Doppler config
+	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 }
 
 type ConfigObservation struct {
@@ -44,6 +48,10 @@ type ConfigObservation struct {
 	// (List of String) A list of other Doppler config descriptors that this config inherits from. Descriptors match the format "project.config" (e.g. backend.stg), which is most easily retrieved as the computed descriptor of a doppler_config resource (e.g. doppler_config.backend_stg.descriptor)
 	// A list of other Doppler config descriptors that this config inherits from. Descriptors match the format "project.config" (e.g. backend.stg), which is most easily retrieved as the computed descriptor of a doppler_config resource (e.g. doppler_config.backend_stg.descriptor)
 	Inherits []*string `json:"inherits,omitempty" tf:"inherits,omitempty"`
+
+	// (String) The name of the Doppler config
+	// The name of the Doppler config
+	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
 	// (String) The name of the Doppler project where the config is located
 	// The name of the Doppler project where the config is located
@@ -76,6 +84,11 @@ type ConfigParameters struct {
 	// A list of other Doppler config descriptors that this config inherits from. Descriptors match the format "project.config" (e.g. backend.stg), which is most easily retrieved as the computed descriptor of a doppler_config resource (e.g. doppler_config.backend_stg.descriptor)
 	// +kubebuilder:validation:Optional
 	Inherits []*string `json:"inherits,omitempty" tf:"inherits,omitempty"`
+
+	// (String) The name of the Doppler config
+	// The name of the Doppler config
+	// +kubebuilder:validation:Optional
+	Name *string `json:"name,omitempty" tf:"name,omitempty"`
 
 	// (String) The name of the Doppler project where the config is located
 	// The name of the Doppler project where the config is located
