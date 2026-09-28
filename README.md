@@ -97,9 +97,9 @@ kubectl -n crossplane-system wait secrets.secrets.doppler.m.crossplane.io/crossp
   --for=condition=Ready --timeout=5m
 ```
 
-The example creates a project, a `ci` environment, a `ci_build` config, and an
-`API_KEY` secret. Kubernetes object names and Doppler names are deliberately
-separate. References allow dependency reconciliation without manual ordering.
+The example creates a project, a `ci` environment, and an `API_KEY` secret.
+It observes the `ci` root config automatically created by Doppler. Kubernetes
+object names and Doppler names are deliberately separate. References allow dependency reconciliation without manual ordering.
 If reconciliation fails, inspect resource conditions/events with `kubectl describe`;
 verify token permissions, reference readiness, and Secret names/keys first.
 
@@ -139,7 +139,24 @@ For adoption, set the external-name annotation, populate parent identifiers,
 and start with `managementPolicies: [Observe]`. Confirm identity and observed
 state before enabling Update or Delete. Doppler automatically creates default
 environments/configs: adopt those rather than trying to recreate them. The
-example uses a separate `ci` environment and `ci_build` branch config.
+example uses a separate `ci` environment and observes its automatic `ci` root config.
+
+### Known live-test limitations
+
+With Terraform provider 1.21.5, reading a nonexistent branch config can return
+HTTP 400 (`This token does not have access to requested config`) rather than
+404. Terraform therefore fails refresh before Crossplane can create the config.
+The provider deliberately does not reinterpret authorization errors as absence.
+Use an existing config (initially with `managementPolicies: [Observe]`) or the
+root config automatically created with an environment. Branch-config creation
+and recovery after its external deletion remain blocked for affected tokens.
+
+Reference resolution waits for parents to be both Ready and Synced before
+extracting their external names. A merge-patch resolver avoids a pinned-runtime
+bug where incremental server-side apply patches drop previously resolved fields.
+Existing resolved references retain normal `IfNotPresent` semantics; clear the
+resolved field or use `policy.resolve: Always` when deliberately retargeting one.
+See [live-test notes](docs/live-reconciliation.md) for validation and limitations.
 
 ## Development
 

@@ -34,12 +34,14 @@ spec:
 apiVersion: secrets.doppler.m.crossplane.io/v1alpha1
 kind: Config
 metadata:
-  name: crossplane-example-ci-build
+  name: crossplane-example-ci-root
   namespace: crossplane-system
   annotations:
-    crossplane.io/external-name: ci_build
+    crossplane.io/external-name: ci
 spec:
-  managementPolicies: [Observe, Create, Update, LateInitialize]
+  # Doppler creates this root config with the environment. Adopt it read-only.
+  # Branch-config creation currently hits an upstream missing-config read error.
+  managementPolicies: [Observe]
   forProvider:
     projectRef:
       name: crossplane-example
@@ -63,7 +65,7 @@ spec:
     projectRef:
       name: crossplane-example
     configRef:
-      name: crossplane-example-ci-build
+      name: crossplane-example-ci-root
     valueSecretRef:
       name: app-input
       key: api-key

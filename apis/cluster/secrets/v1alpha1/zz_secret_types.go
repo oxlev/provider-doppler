@@ -55,6 +55,7 @@ type SecretParameters struct {
 	// (String) The name of the Doppler config
 	// The name of the Doppler config
 	// +crossplane:generate:reference:type=github.com/oxlev/provider-doppler/apis/cluster/secrets/v1alpha1.Config
+	// +crossplane:generate:reference:extractor=github.com/oxlev/provider-doppler/internal/references.ReadyExternalName()
 	// +kubebuilder:validation:Optional
 	Config *string `json:"config,omitempty" tf:"config,omitempty"`
 
@@ -69,6 +70,7 @@ type SecretParameters struct {
 	// (String) The name of the Doppler project
 	// The name of the Doppler project
 	// +crossplane:generate:reference:type=github.com/oxlev/provider-doppler/apis/cluster/secrets/v1alpha1.Project
+	// +crossplane:generate:reference:extractor=github.com/oxlev/provider-doppler/internal/references.ReadyExternalName()
 	// +kubebuilder:validation:Optional
 	Project *string `json:"project,omitempty" tf:"project,omitempty"`
 
